@@ -104,15 +104,15 @@ tasks {
         }
     }
 
-    val publishContent by creating {
-        doLast {
-            exec { commandLine("rsync", "-avz", "$contentDir/", "$baseOut/app/content/") }
-        }
-    }
+    //val publishContent by creating {
+    //    doLast {
+    //        exec { commandLine("rsync", "-avz", "$contentDir/", "$baseOut/app/content/") }
+    //    }
+    //}
 
     val publishFatJar by creating {
         dependsOn(fatJar)
-        dependsOn(publishContent)
+        //dependsOn(publishContent)
         doLast {
             exec { commandLine("rsync", "-avz", jarFile, "$baseOut/app/") }
         }
