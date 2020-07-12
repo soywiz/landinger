@@ -32,17 +32,15 @@ suspend fun main(args: Array<String>) {
     val params = params1 ?: params2
     val cli = CliParser()
 
+    var config = Config()
     var serve = false
     var generate = false
-    var port = System.getenv("VIRTUAL_PORT")?.toIntOrNull() ?: 8080
-    var host = "127.0.0.1"
-    var contentDir = "content"
     var showHelp = false
 
-    cli.registerSwitch<String>("-c", "--content-dir", desc = "Sets the content directory (default)") { contentDir = it }
+    cli.registerSwitch<String>("-c", "--content-dir", desc = "Sets the content directory (default)") { config.contentDir = it }
     cli.registerSwitch<Boolean>("-s", "--serve", desc = "") { serve = it }
-    cli.registerSwitch<String>("-h", "--host", desc = "Sets the host for generating the website") { host = it }
-    cli.registerSwitch<Int>("-p", "--port", desc = "Sets the port for listening") { port = it }
+    cli.registerSwitch<String>("-h", "--host", desc = "Sets the host for generating the website") { config.host = it }
+    cli.registerSwitch<Int>("-p", "--port", desc = "Sets the port for listening") { config.port = it }
     cli.registerSwitch<Boolean>("-g", "--generate", desc = "") { generate = it }
     cli.registerSwitch<Unit>("-h", "--help", desc = "") { showHelp = true }
     cli.registerDefault(desc = "") { error("Unexpected '$it'") }
@@ -52,12 +50,18 @@ suspend fun main(args: Array<String>) {
     if (showHelp) {
         cli.showHelp()
     } else {
-        serve(port)
+        serve(config)
     }
 }
 
-fun serve(port: Int) {
-    embeddedServer(Netty, port = port) {
+data class Config(
+    var port: Int = System.getenv("VIRTUAL_PORT")?.toIntOrNull() ?: 8080,
+    var host: String = "127.0.0.1",
+    var contentDir: String = "content"
+)
+
+fun serve(config: Config) {
+    embeddedServer(Netty, port = config.port) {
         install(XForwardedHeaderSupport)
         install(PartialContent) {
             maxRangeCount = 10
@@ -73,7 +77,7 @@ fun serve(port: Int) {
             }
         }
 
-        val folders = Folders(File("content"))
+        val folders = Folders(File(config.contentDir))
         val indexService = IndexService(folders)
         val entries = Entries(folders, indexService)
         val myLuceneIndex = MyLuceneIndex(entries)
