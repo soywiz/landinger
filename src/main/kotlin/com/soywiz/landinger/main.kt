@@ -1,5 +1,6 @@
 package com.soywiz.landinger
 
+import com.soywiz.kds.linkedHashMapOf
 import com.soywiz.korio.file.std.get
 import com.soywiz.korte.*
 import com.soywiz.landinger.modules.MyLuceneIndex
@@ -141,6 +142,7 @@ class Folders(content: File) {
     val layouts = content["layouts"]
     val includes = content["includes"]
     val pages = content["pages"]
+    val data = content["data"]
     val posts = content["posts"]
     val static = content["static"]
     val configYml = content["config.yml"]
@@ -156,8 +158,19 @@ fun FileWithFrontMatter.toTemplateContent() = TemplateContent(rawFileContent) {
 class LandingServing(val folders: Folders, val entries: Entries) {
     @Transient
     var config: Map<String, Any?> = mapOf()
+
+    @Transient
+    var siteData: Map<String, Any?> = mapOf()
+
     fun reloadConfig() {
         config = yaml.load<Map<String, Any?>>((folders.configYml.takeIfExists()?.readText() ?: "").reader())
+        this.siteData = linkedHashMapOf<String, Any?>().also { siteData ->
+            for (file in folders.data.walkTopDown()) {
+                if (file.extension == "yml") {
+                    siteData[file.nameWithoutExtension] = yaml.load<Any?>(file.readText().reader())
+                }
+            }
+        }
     }
 
     val templateProvider = object : NewTemplateProvider {
@@ -245,7 +258,10 @@ class LandingServing(val folders: Folders, val entries: Entries) {
         if (entry != null) {
             val text = templates.render(permalink, config + mapOf(
                 "_request" to mapOf("host" to call.request.host()),
-                "_call" to call
+                "_call" to call,
+                "site" to mapOf(
+                    "data" to siteData
+                )
             ))
             call.respondText(text, ContentType.Text.Html)
         } else {
