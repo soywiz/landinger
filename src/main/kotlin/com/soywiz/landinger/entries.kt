@@ -2,12 +2,15 @@ package com.soywiz.landinger
 
 import com.soywiz.klock.*
 import com.soywiz.korio.file.std.*
+import com.soywiz.landinger.util.absoluteUrl
+import com.soywiz.landinger.util.kramdownToHtml
+import com.soywiz.landinger.util.yaml
 import io.ktor.application.*
 import io.ktor.features.*
 import io.ktor.http.*
 import java.io.*
 
-object IndexService {
+class IndexService(val folders: Folders) {
     fun index(folder: File): EntriesStore {
         val entries = arrayListOf<Entry>()
         val postRegex = Regex("^(\\d+)-(\\d+)-(\\d+)-(.*)$")
@@ -28,7 +31,7 @@ object IndexService {
                         permalink = dateParts.groupValues[4]
                         date = DateTime(year, month, day)
                     }
-                    println("HEADER: $header")
+                    //println("HEADER: $header")
                     if ("date" in header) {
                         val dateStr = header["date"].toString()
                         try {
@@ -53,7 +56,6 @@ object IndexService {
                 }
             }
         }
-        println("Loaded ${entries.size} posts in $time")
         return EntriesStore(entries)
     }
 }
@@ -90,15 +92,6 @@ val RequestConnectionPoint.schemePlusHost: String get() = run {
     }
 }
 
-fun getAbsoluteUrl(uri: String, call: ApplicationCall): String =
-    if (uri.startsWith("http://") || uri.startsWith("https://")) {
-        uri
-    } else {
-        "${call.request.origin.schemePlusHost}/${uri.trimStart('/')}"
-    }
-
-fun String.absoluteUrl(call: ApplicationCall): String = getAbsoluteUrl(this, call)
-
 class FileWithFrontMatter(val file: File) {
     val rawFileContent by lazy { file.readText() }
     val isMarkdown = file.name.endsWith(".md") || file.name.endsWith(".markdown")
@@ -112,7 +105,7 @@ class FileWithFrontMatter(val file: File) {
     }
     val headerRaw by lazy { parts[0] }
     val bodyRaw by lazy { parts[1] ?: "" }
-    val bodyHtml by lazy { if (isMarkdown) kramdownToHtml(bodyRaw) else bodyRaw }
+    val bodyHtml by lazy { if (isMarkdown) bodyRaw.kramdownToHtml() else bodyRaw }
     val fileContentHtml by lazy {  createFullTextWithBody(bodyHtml)}
     val header: Map<String, Any?> by lazy { if (headerRaw != null) yaml.load<Map<String, Any?>>(headerRaw) else mapOf<String, Any?>() }
 
@@ -146,18 +139,23 @@ data class Entry(
     val htmlWithHeader get() = mfile.fileContentHtml
 }
 
-private val _entriesLock = Any()
-private var _entries: EntriesStore? = null
-val entries: EntriesStore
-    get() = synchronized(_entriesLock) {
-    if (_entries == null) {
-        _entries = IndexService.index(
-            docsRoot["posts"]
-        ) + IndexService.index(docsRoot["pages"])
-    }
-    _entries!!
-}
+class Entries(val folders: Folders, val indexService: IndexService) {
+    private val _entriesLock = Any()
+    private var _entries: EntriesStore? = null
+    val entries: EntriesStore
+        get() = synchronized(_entriesLock) {
+            if (_entries == null) {
+                val time = measureTime {
+                    val entries = indexService.index(folders.posts) + indexService.index(folders.pages)
+                    _entries = entries
+                }
+                println("Loaded ${entries.entries.size} posts in $time")
+            }
+            _entries!!
+        }
 
-fun entriesReload() {
-    _entries = null
+    fun entriesReload() {
+        _entries = null
+    }
+
 }

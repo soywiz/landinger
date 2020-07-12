@@ -1,4 +1,4 @@
-package com.soywiz.landinger
+package com.soywiz.landinger.util
 
 import com.yahoo.platform.yui.compressor.CssCompressor
 import java.io.StringWriter

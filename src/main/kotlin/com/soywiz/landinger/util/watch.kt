@@ -1,4 +1,4 @@
-package com.soywiz.landinger
+package com.soywiz.landinger.util
 
 import com.soywiz.korio.lang.Cancellable
 import java.io.File

@@ -1,4 +1,4 @@
-package com.soywiz.landinger
+package com.soywiz.landinger.util
 
 import com.vladsch.flexmark.ext.abbreviation.*
 import com.vladsch.flexmark.ext.definition.*
@@ -23,5 +23,4 @@ private val options = MutableDataSet().also { options ->
 private val parser = Parser.builder(options).build()
 private val renderer = HtmlRenderer.builder(options).build()
 
-fun kramdownToHtml(kramdown: String): String = renderer.render(
-    parser.parse(kramdown))
+fun String.kramdownToHtml() = renderer.render(parser.parse(this))

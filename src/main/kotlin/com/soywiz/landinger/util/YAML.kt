@@ -1,4 +1,4 @@
-package com.soywiz.landinger
+package com.soywiz.landinger.util
 
 import org.yaml.snakeyaml.*
 

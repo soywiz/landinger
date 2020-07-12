@@ -1,19 +1,21 @@
-package com.soywiz.landinger
+package com.soywiz.landinger.modules
 
 import com.soywiz.klock.*
 import com.soywiz.korio.lang.*
 import com.soywiz.korio.util.*
+import com.soywiz.landinger.Entries
+import com.soywiz.landinger.util.absoluteUrl
 import io.ktor.application.*
 import io.ktor.http.*
 import io.ktor.response.*
 import io.ktor.routing.*
 import io.ktor.util.*
 
-fun Route.registerRss() {
+fun Route.registerRss(entries: Entries) {
     get("/rss") {
         val rootUrl = "/".absoluteUrl(call)
         val rssUrl = "/rss/".absoluteUrl(call)
-        val lastUpdated = entries.entries.last().date
+        val lastUpdated = entries.entries.entries.last().date
         val dateFormat = DateFormat.FORMAT1
         val text = Indenter {
             line("<feed xmlns=\"http://www.w3.org/2005/Atom\">")
@@ -24,7 +26,7 @@ fun Route.registerRss() {
                 line("<id>$rootUrl</id>")
                 line("<title type=\"html\">soywiz</title>")
                 line("<subtitle>Let's code it.</subtitle>")
-                for (entry in entries.entries.take(10)) {
+                for (entry in entries.entries.entries.take(10)) {
                     val entryUrl = entry.url(call)
                     line("<entry>")
                     indent {

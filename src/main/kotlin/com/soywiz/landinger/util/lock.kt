@@ -1,4 +1,4 @@
-package com.soywiz.landinger
+package com.soywiz.landinger.util
 
 class LockSignal {
     private val obj = java.lang.Object()

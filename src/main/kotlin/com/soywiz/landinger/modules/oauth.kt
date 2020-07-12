@@ -1,8 +1,10 @@
-package com.soywiz.landinger
+package com.soywiz.landinger.modules
 
 import com.fasterxml.jackson.module.kotlin.*
 import com.soywiz.klock.*
 import com.soywiz.korio.lang.*
+import io.ktor.client.HttpClient
+import io.ktor.client.engine.okhttp.OkHttp
 import io.ktor.client.request.*
 import io.ktor.client.request.forms.*
 import io.ktor.http.*
@@ -13,8 +15,10 @@ val GH_CLIENT_ID by lazy { System.getenv("GH_CLIENT_ID") }
 val GH_CLIENT_SECRET by lazy { System.getenv("GH_CLIENT_SECRET") }
 val GH_SPONSOR_TOKEN by lazy { System.getenv("GH_SPONSOR_TOKEN") }
 
+private val oauthHttpClient = HttpClient(OkHttp)
+
 suspend fun oauthGetAccessToken(code: String): String {
-    val result = httpClient.post<String>(URL("https://github.com/login/oauth/access_token")) {
+    val result = oauthHttpClient.post<String>(URL("https://github.com/login/oauth/access_token")) {
         body = FormDataContent(Parameters.build {
             append("client_id", GH_CLIENT_ID)
             append("client_secret", GH_CLIENT_SECRET)
@@ -26,7 +30,7 @@ suspend fun oauthGetAccessToken(code: String): String {
 }
 
 suspend fun oauthGetUserLogin(access_token: String): String {
-    val result = httpClient.get<String>(URL("https://api.github.com/user")) {
+    val result = oauthHttpClient.get<String>(URL("https://api.github.com/user")) {
         header("Authorization", "token $access_token")
     }
     val data = jsonMapper.readValue<Map<String, Any?>>(result)
@@ -36,7 +40,7 @@ suspend fun oauthGetUserLogin(access_token: String): String {
 val jsonMapper = jacksonObjectMapper()
 
 suspend fun graphqlCall(access_token: String, query: String): Map<String, Any?> {
-    val result = httpClient.post<String>(URL("https://api.github.com/graphql")) {
+    val result = oauthHttpClient.post<String>(URL("https://api.github.com/graphql")) {
         header("Authorization", "bearer $access_token")
         body = TextContent(jsonMapper.writeValueAsString(mapOf("query" to query)), contentType = ContentType.Any)
     }

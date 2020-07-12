@@ -4,10 +4,23 @@ layout: null
 <!doctype html>
 <html lang="{{ lang }}">
 <head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="profile" href="https://gmpg.org/xfn/11">
 <title>{{ title }}</title>
+<meta name="description" content="{{ description }}"/>
+<meta name="robots" content="max-snippet:-1, max-image-preview:large, max-video-preview:-1"/>
 <style>{% import_css "styles.css" %}</style>
 </head>
 <body>
-{{content}}
+<header>
+    <div class="site-header">
+        <a href="/">{{ sitename }}</a>
+    </div>
+</header>
+<div class="site-body">
+    <h1 class="title">{{ title }}</h1>
+    {{content}}
+</div>
 </body>
 </html>

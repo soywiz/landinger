@@ -1,56 +1,27 @@
 package com.soywiz.landinger
 
-import com.soywiz.klock.measureTime
-import com.soywiz.korio.async.launch
-import com.soywiz.korio.file.std.uniVfs
+import com.soywiz.korio.file.std.get
 import com.soywiz.korte.*
-import com.yahoo.platform.yui.compressor.CssCompressor
+import com.soywiz.landinger.modules.MyLuceneIndex
+import com.soywiz.landinger.util.*
 import io.ktor.application.ApplicationCall
 import io.ktor.application.call
 import io.ktor.application.install
-import io.ktor.client.HttpClient
-import io.ktor.client.engine.okhttp.OkHttp
 import io.ktor.features.CachingHeaders
 import io.ktor.features.PartialContent
 import io.ktor.features.XForwardedHeaderSupport
 import io.ktor.http.CacheControl
 import io.ktor.http.ContentType
 import io.ktor.http.content.CachingOptions
-import io.ktor.http.content.files
-import io.ktor.http.content.static
-import io.ktor.http.content.staticRootFolder
+import io.ktor.response.respondFile
 import io.ktor.response.respondText
 import io.ktor.routing.get
 import io.ktor.routing.route
 import io.ktor.routing.routing
 import io.ktor.server.engine.embeddedServer
 import io.ktor.server.netty.Netty
+import io.ktor.util.pipeline.PipelineContext
 import java.io.File
-import java.io.StringWriter
-import java.lang.StringBuilder
-import kotlin.coroutines.EmptyCoroutineContext
-
-val httpClient = HttpClient(OkHttp)
-
-val docsRoot = File("content").absoluteFile
-
-val luceneIndex: LuceneIndex by lazy {
-    LuceneIndex().also { luceneIndex ->
-        val indexTime = measureTime {
-            luceneIndex.addDocuments(
-                *entries.entries.map {
-                    LuceneIndex.DocumentInfo(
-                        it.permalink,
-                        it.title,
-                        it.bodyHtml
-                    )
-                }.toTypedArray()
-            )
-
-        }
-        println("Lucene indexed in $indexTime...")
-    }
-}
 
 suspend fun main(args: Array<String>) {
     //luceneIndex.search("hello")
@@ -71,7 +42,11 @@ suspend fun main(args: Array<String>) {
             }
         }
 
-        val landing = LandingServing()
+        val folders = Folders(File("content"))
+        val indexService = IndexService(folders)
+        val entries = Entries(folders, indexService)
+        val myLuceneIndex = MyLuceneIndex(entries)
+        val landing = LandingServing(folders, entries)
 
         routing {
             route("/") {
@@ -116,46 +91,45 @@ suspend fun main(args: Array<String>) {
                 //    call.respondRedirect(call.sessions.get<LastVisitedPageSession>()?.page ?: "/")
                 //}
                 get("/") {
-                    landing.servePost(call, "")
+                    landing.servePost(this, "")
                 }
                 get("/{permalink}") {
-                    landing.servePost(call, call.parameters["permalink"].toString())
-                }
-                //get("/i/{path...}") {
-                //    val path = call.parameters["path"]
-                //    call.respondFile(docsRoot["i"], path!!)
-                //}
-            }
-            for (staticFolder in listOf("i", "img", "content")) {
-                static(staticFolder) {
-                    staticRootFolder = docsRoot
-                    files(staticFolder)
+                    landing.servePost(this, call.parameters["permalink"].toString())
                 }
             }
         }
     }.start(wait = true)
 }
 
-class LandingServing {
+class Folders(content: File) {
+    val content = content.canonicalFile
+    val layouts = content["layouts"]
+    val includes = content["includes"]
+    val pages = content["pages"]
+    val posts = content["posts"]
+    val static = content["static"]
+    val configYml = content["config.yml"]
+}
+
+class LandingServing(val folders: Folders, val entries: Entries) {
     @Transient
     var config: Map<String, Any?> = mapOf()
     fun reloadConfig() {
-        config = yaml.load<Map<String, Any?>>((File("content/config.yml").takeIfExists()?.readText() ?: "").reader())
+        config = yaml.load<Map<String, Any?>>((folders.configYml.takeIfExists()?.readText() ?: "").reader())
     }
 
     val templateProvider = object : TemplateProvider {
         override suspend fun get(template: String): String? {
-            val entry = entries[template] ?: return null
+            val entry = entries.entries[template] ?: return null
             return entry.htmlWithHeader
         }
     }
 
-    class TemplateProviderWithFrontMatter(val path: String) : TemplateProvider {
+    class TemplateProviderWithFrontMatter(val path: File) : TemplateProvider {
         override suspend fun get(template: String): String? {
-            val fullPath = "$path/$template"
-            for (filePath in listOf(fullPath, "$fullPath.md", "$fullPath.html")) {
-                val file = File(filePath)
-                if (file.exists()) {
+            for (filePath in listOf(template, "$template.md", "$template.html")) {
+                val file = path.child(filePath)
+                if (file != null && file.exists()) {
                     return FileWithFrontMatter(file).fileContentHtml
                 }
             }
@@ -163,58 +137,49 @@ class LandingServing {
         }
     }
 
-
-    val layoutsProvider = TemplateProviderWithFrontMatter("content/layouts")
-    val includesProvider = TemplateProviderWithFrontMatter("content/includes")
+    val layoutsProvider = TemplateProviderWithFrontMatter(folders.layouts)
+    val includesProvider = TemplateProviderWithFrontMatter(folders.includes)
 
     val templateConfig = TemplateConfig(
         extraTags = listOf(
             Tag("import_css", setOf(), null) {
                 //val expr = chunks[0].tag.expr
                 val expr = chunks[0].tag.content.trimStart('"').trimEnd('"')
-                DefaultBlocks.BlockText(File("content/static/$expr").readText().compressCss())
+                DefaultBlocks.BlockText(folders.static.child(expr)!!.readText().compressCss())
             }
         )
     )
     val templates = Templates(templateProvider, includesProvider, layoutsProvider, templateConfig, cache = true)
 
     var doReload = LockSignal()
+
     init {
         Thread {
             while (true) {
                 doReload.wait()
                 Thread.sleep(50L)
                 println("Reload...")
-                entriesReload()
+                entries.entriesReload()
                 templates.invalidateCache()
                 reloadConfig()
             }
         }.apply { isDaemon = true }.start()
-        File("content").watchTree {
+        folders.content.watchTree {
             doReload.notifyAll()
         }
         reloadConfig()
     }
 
-    suspend fun servePost(call: ApplicationCall, permalink: String) {
+    suspend fun servePost(pipeline: PipelineContext<Unit, ApplicationCall>, permalink: String) = pipeline.apply {
         val entry = templateProvider.get(permalink)
-        //println(entries)
-
         if (entry != null) {
-            //call.sessions.set(LastVisitedPageSession(call.request.uri))
-
-
             val text = templates.render(permalink, config)
             call.respondText(text, ContentType.Text.Html)
-
-            //call.respondText("page", ContentType.Text.Html)
         } else {
-            //println(permalink)
-            //println(entries.entries)
-            //println(entries.entriesByPermalink)
-            call.respondText("404", ContentType.Text.Html)
+            val file = folders.static.child(permalink)
+            if (file?.exists() == true) {
+                call.respondFile(file)
+            }
         }
     }
-
 }
-

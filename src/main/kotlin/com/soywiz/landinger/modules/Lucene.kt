@@ -1,5 +1,7 @@
-package com.soywiz.landinger
+package com.soywiz.landinger.modules
 
+import com.soywiz.klock.measureTime
+import com.soywiz.landinger.Entries
 import org.apache.lucene.analysis.standard.*
 import org.apache.lucene.document.*
 import org.apache.lucene.index.*
@@ -37,6 +39,26 @@ class LuceneIndex {
         for (doc in results.scoreDocs) {
             val docId = reader.document(doc.doc).get("id")
             println(" - $doc : $docId")
+        }
+    }
+}
+
+class MyLuceneIndex(val entries: Entries) {
+    val luceneIndex: LuceneIndex by lazy {
+        LuceneIndex().also { luceneIndex ->
+            val indexTime = measureTime {
+                luceneIndex.addDocuments(
+                    *entries.entries.entries.map {
+                        LuceneIndex.DocumentInfo(
+                            it.permalink,
+                            it.title,
+                            it.bodyHtml
+                        )
+                    }.toTypedArray()
+                )
+
+            }
+            println("Lucene indexed in $indexTime...")
         }
     }
 }
