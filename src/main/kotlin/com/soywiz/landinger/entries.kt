@@ -2,6 +2,7 @@ package com.soywiz.landinger
 
 import com.soywiz.klock.*
 import com.soywiz.landinger.util.absoluteUrl
+import com.soywiz.landinger.util.canonicalPermalink
 import com.soywiz.landinger.util.kramdownToHtml
 import com.soywiz.landinger.util.yaml
 import io.ktor.application.*
@@ -44,7 +45,7 @@ class IndexService(val folders: Folders) {
                     entries += Entry(
                         mfile = mfile,
                         date = date,
-                        permalink = (header["permalink"]?.toString() ?: permalink).trimStart('/'),
+                        permalink = (header["permalink"]?.toString() ?: permalink).canonicalPermalink(),
                         feature_image = header["feature_image"]?.toString(),
                         icon = header["icon"]?.toString(),
                         title = title,
@@ -61,7 +62,7 @@ class IndexService(val folders: Folders) {
 data class EntriesStore(val allEntries: List<Entry>) {
     val entries = allEntries.filterNot { it.hidden }.sortedByDescending { it.date }
     val entriesByDate = entries
-    val entriesByPermalink = entries.associateBy { it.permalink }
+    val entriesByPermalink = entries.associateBy { it.permalink.canonicalPermalink() }
     val entriesSocialCoding = entriesByDate.filter { "social-coding" in it.tags }
     val entriesArticles = entriesByDate.filter { "article" in it.tags }
     val entriesReleases = entriesByDate.filter { "release" in it.tags }
@@ -70,7 +71,7 @@ data class EntriesStore(val allEntries: List<Entry>) {
     operator fun plus(other: EntriesStore) =
         EntriesStore(allEntries + other.allEntries)
 
-    operator fun get(permalink: String) = entriesByPermalink[permalink]
+    operator fun get(permalink: String) = entriesByPermalink[permalink.canonicalPermalink()]
 }
 
 val RequestConnectionPoint.schemePlusHost: String get() = run {

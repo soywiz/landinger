@@ -15,6 +15,7 @@ import io.ktor.http.CacheControl
 import io.ktor.http.ContentType
 import io.ktor.http.content.CachingOptions
 import io.ktor.request.host
+import io.ktor.request.uri
 import io.ktor.response.respondFile
 import io.ktor.response.respondText
 import io.ktor.routing.get
@@ -129,8 +130,8 @@ fun serve(config: Config) {
                 get("/") {
                     landing.servePost(this, "")
                 }
-                get("/{permalink}") {
-                    landing.servePost(this, call.parameters["permalink"].toString())
+                get("/{permalink...}") {
+                    landing.servePost(this, call.request.uri)
                 }
             }
         }
@@ -254,6 +255,7 @@ class LandingServing(val folders: Folders, val entries: Entries) {
     }
 
     suspend fun servePost(pipeline: PipelineContext<Unit, ApplicationCall>, permalink: String) = pipeline.apply {
+        val permalink = permalink.canonicalPermalink()
         val entry = templateProvider.newGet(permalink)
         if (entry != null) {
             val text = templates.render(permalink, config + mapOf(
@@ -265,8 +267,10 @@ class LandingServing(val folders: Folders, val entries: Entries) {
             ))
             call.respondText(text, ContentType.Text.Html)
         } else {
+            //println("STATIC: $permalink [0]")
             val file = folders.static.child(permalink)
-            if (file?.exists() == true) {
+            //println("STATIC: $permalink -> $file : ${file?.exists()} : ${file?.isFile}")
+            if (file?.isFile == true) {
                 call.respondFile(file)
             }
         }
