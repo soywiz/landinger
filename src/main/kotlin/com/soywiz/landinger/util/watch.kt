@@ -49,12 +49,12 @@ fun File.watchTree(block: (event: WatchEvent<*>) -> Unit): Cancellable {
                 if (!running) break
 
                 // Last queued event
-                if (watchService.poll() == null) {
-                    Thread.sleep(10L)
-                    if (watchService.poll() == null) {
-                        registerFolders()
-                    }
-                }
+                //if (watchService.poll() == null) {
+                //    Thread.sleep(10L)
+                //    if (watchService.poll() == null) {
+                //        registerFolders()
+                //    }
+                //}
                 for (event in watchKey.pollEvents()) block(event)
                 if (!watchKey.reset()) break
             }
