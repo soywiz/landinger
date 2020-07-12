@@ -1,12 +1,10 @@
 package com.soywiz.landinger
 
 import com.soywiz.klock.*
-import com.soywiz.korio.file.std.*
 import com.soywiz.landinger.util.absoluteUrl
 import com.soywiz.landinger.util.kramdownToHtml
 import com.soywiz.landinger.util.yaml
 import io.ktor.application.*
-import io.ktor.features.*
 import io.ktor.http.*
 import java.io.*
 
@@ -94,8 +92,9 @@ val RequestConnectionPoint.schemePlusHost: String get() = run {
 
 class FileWithFrontMatter(val file: File) {
     val rawFileContent by lazy { file.readText() }
-    val isMarkdown = file.name.endsWith(".md") || file.name.endsWith(".markdown")
+    val isMarkDown = file.name.endsWith(".md") || file.name.endsWith(".markdown")
     val isHtml = file.name.endsWith(".html")
+    val isXml = file.name.endsWith(".xml")
     private val parts by lazy {
         val parts = rawFileContent.split("---\n", limit = 3)
         when {
@@ -105,7 +104,7 @@ class FileWithFrontMatter(val file: File) {
     }
     val headerRaw by lazy { parts[0] }
     val bodyRaw by lazy { parts[1] ?: "" }
-    val bodyHtml by lazy { if (isMarkdown) bodyRaw.kramdownToHtml() else bodyRaw }
+    val bodyHtml by lazy { if (isMarkDown) bodyRaw.kramdownToHtml() else bodyRaw }
     val fileContentHtml by lazy {  createFullTextWithBody(bodyHtml)}
     val header: Map<String, Any?> by lazy { if (headerRaw != null) yaml.load<Map<String, Any?>>(headerRaw) else mapOf<String, Any?>() }
 
@@ -131,11 +130,14 @@ data class Entry(
     val file = mfile.file
     fun url(call: ApplicationCall): String = this.permalinkUri.absoluteUrl(call)
 
-    val isMarkDown = (file.name.endsWith(".md")) || (file.name.endsWith(".markdown"))
+    val isMarkDown = mfile.isMarkDown
+    val isHtml = mfile.isHtml
+    val isXml = mfile.isXml
 
     val permalinkUri = "/$permalink/"
     val bodyHtml get() = mfile.bodyHtml
 
+    val rawFileContent get() = mfile.rawFileContent
     val htmlWithHeader get() = mfile.fileContentHtml
 }
 

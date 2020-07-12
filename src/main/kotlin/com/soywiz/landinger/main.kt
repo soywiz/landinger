@@ -2,6 +2,8 @@ package com.soywiz.landinger
 
 import com.soywiz.korio.file.std.get
 import com.soywiz.korte.*
+import com.soywiz.korte.dynamic.DynamicContext
+import com.soywiz.korte.dynamic.Mapper2
 import com.soywiz.landinger.modules.MyLuceneIndex
 import com.soywiz.landinger.util.*
 import io.ktor.application.ApplicationCall
@@ -13,6 +15,7 @@ import io.ktor.features.XForwardedHeaderSupport
 import io.ktor.http.CacheControl
 import io.ktor.http.ContentType
 import io.ktor.http.content.CachingOptions
+import io.ktor.request.host
 import io.ktor.response.respondFile
 import io.ktor.response.respondText
 import io.ktor.routing.get
@@ -21,6 +24,7 @@ import io.ktor.routing.routing
 import io.ktor.server.engine.embeddedServer
 import io.ktor.server.netty.Netty
 import io.ktor.util.pipeline.PipelineContext
+import kotlinx.coroutines.runBlocking
 import java.io.File
 
 suspend fun main(args: Array<String>) {
@@ -111,6 +115,13 @@ class Folders(content: File) {
     val configYml = content["config.yml"]
 }
 
+fun FileWithFrontMatter.toTemplateContent() = TemplateContent(rawFileContent) {
+    when {
+        isMarkDown -> it.kramdownToHtml()
+        else -> it
+    }
+}
+
 class LandingServing(val folders: Folders, val entries: Entries) {
     @Transient
     var config: Map<String, Any?> = mapOf()
@@ -118,19 +129,20 @@ class LandingServing(val folders: Folders, val entries: Entries) {
         config = yaml.load<Map<String, Any?>>((folders.configYml.takeIfExists()?.readText() ?: "").reader())
     }
 
-    val templateProvider = object : TemplateProvider {
-        override suspend fun get(template: String): String? {
+    val templateProvider = object : NewTemplateProvider {
+        override suspend fun newGet(template: String): TemplateContent? {
             val entry = entries.entries[template] ?: return null
-            return entry.htmlWithHeader
+            return entry.mfile.toTemplateContent()
         }
     }
 
-    class TemplateProviderWithFrontMatter(val path: File) : TemplateProvider {
-        override suspend fun get(template: String): String? {
+    class TemplateProviderWithFrontMatter(val path: File) : NewTemplateProvider {
+        override suspend fun newGet(template: String): TemplateContent? {
+            //println("INCLUDE: '$template'")
             for (filePath in listOf(template, "$template.md", "$template.html")) {
                 val file = path.child(filePath)
-                if (file != null && file.exists()) {
-                    return FileWithFrontMatter(file).fileContentHtml
+                if (file != null && file.exists() && !file.isDirectory) {
+                    return FileWithFrontMatter(file).toTemplateContent()
                 }
             }
             return null
@@ -140,12 +152,39 @@ class LandingServing(val folders: Folders, val entries: Entries) {
     val layoutsProvider = TemplateProviderWithFrontMatter(folders.layouts)
     val includesProvider = TemplateProviderWithFrontMatter(folders.includes)
 
+    //fun getAbsoluteUrl(scope: Template.Scope, path: String): String {
+    //    return DynamicContext {
+    //        val host = runBlocking { scope.get("_request").dynamicGet("host", Mapper2).toDynamicString() }
+    //        "https://$host/" + path.toString().trimStart('/')
+    //    }
+    //}
+
+    fun getAbsoluteUrl(url: String, scope: Template.Scope): String {
+        return runBlocking { getAbsoluteUrl(url, scope.get("_call") as ApplicationCall) }
+    }
+
     val templateConfig = TemplateConfig(
         extraTags = listOf(
             Tag("import_css", setOf(), null) {
                 //val expr = chunks[0].tag.expr
                 val expr = chunks[0].tag.content.trimStart('"').trimEnd('"')
                 DefaultBlocks.BlockText(folders.static.child(expr)!!.readText().compressCss())
+            }
+        ),
+        extraFilters = listOf(
+            Filter("img_src") {
+                val path = subject.toString()
+                val absPath = getAbsoluteUrl(path, context.scope)
+                absPath
+            },
+            Filter("img_srcset") {
+                val path = subject.toString()
+                val absPath = getAbsoluteUrl(path, context.scope)
+                args.map { it.toDynamicInt() }.joinToString(", ") { "$absPath ${it}w" }
+            },
+            Filter("absolute") {
+                val call = context.scope.get("_call") as ApplicationCall
+                getAbsoluteUrl(subject.toString(), call)
             }
         )
     )
@@ -171,9 +210,12 @@ class LandingServing(val folders: Folders, val entries: Entries) {
     }
 
     suspend fun servePost(pipeline: PipelineContext<Unit, ApplicationCall>, permalink: String) = pipeline.apply {
-        val entry = templateProvider.get(permalink)
+        val entry = templateProvider.newGet(permalink)
         if (entry != null) {
-            val text = templates.render(permalink, config)
+            val text = templates.render(permalink, config + mapOf(
+                "_request" to mapOf("host" to call.request.host()),
+                "_call" to call
+            ))
             call.respondText(text, ContentType.Text.Html)
         } else {
             val file = folders.static.child(permalink)

@@ -1,0 +1,17 @@
+<article class="entry-item">
+    <header class="entry-header">
+        <a href="https://steampunker.top/cinturon-steampunk/" rel="bookmark "
+           data-ss1594557897="1">
+            <img width="320" height="320"
+                 src="{{include.image | img_src }}"
+                 srcset="{{include.image | img_srcset(150, 300) }}"
+                 class="lazy" alt="{{include.alt}}"
+                 sizes="(max-width: 320px) 100vw, 320px"
+            />
+            <h3 class="entry-title">{{include.title}}</h3></a></header>
+    <div class="entry-meta">
+        <div class="entry-excerpt">
+            {{ include.excerpt }}
+        </div>
+    </div>
+</article>
