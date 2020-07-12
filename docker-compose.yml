@@ -1,0 +1,22 @@
+version: '2'
+
+services:
+  site:
+    build:
+      context: ./
+    volumes:
+      - $PWD/app:/app:ro
+    networks:
+      - reverse-proxy
+    restart: always
+    expose:
+      - ${VIRTUAL_PORT}
+    environment:
+      VIRTUAL_HOST: ${VIRTUAL_HOST}
+      VIRTUAL_PORT: ${VIRTUAL_HOST}
+      LETSENCRYPT_EMAIL: soywiz@gmail.com
+      LETSENCRYPT_HOST: ${VIRTUAL_HOST}
+networks:
+  reverse-proxy:
+    external:
+      name: reverse-proxy

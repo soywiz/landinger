@@ -2,8 +2,6 @@ package com.soywiz.landinger
 
 import com.soywiz.korio.file.std.get
 import com.soywiz.korte.*
-import com.soywiz.korte.dynamic.DynamicContext
-import com.soywiz.korte.dynamic.Mapper2
 import com.soywiz.landinger.modules.MyLuceneIndex
 import com.soywiz.landinger.util.*
 import io.ktor.application.ApplicationCall
@@ -29,8 +27,37 @@ import java.io.File
 
 suspend fun main(args: Array<String>) {
     //luceneIndex.search("hello")
+    val params1 = System.getProperty("landinger.args")?.toString()?.let { CliParser.parseString(it) }
+    val params2 = args.toList()
+    val params = params1 ?: params2
+    val cli = CliParser()
 
-    embeddedServer(Netty, port = 8080) {
+    var serve = false
+    var generate = false
+    var port = System.getenv("VIRTUAL_PORT")?.toIntOrNull() ?: 8080
+    var host = "127.0.0.1"
+    var contentDir = "content"
+    var showHelp = false
+
+    cli.registerSwitch<String>("-c", "--content-dir", desc = "Sets the content directory (default)") { contentDir = it }
+    cli.registerSwitch<Boolean>("-s", "--serve", desc = "") { serve = it }
+    cli.registerSwitch<String>("-h", "--host", desc = "Sets the host for generating the website") { host = it }
+    cli.registerSwitch<Int>("-p", "--port", desc = "Sets the port for listening") { port = it }
+    cli.registerSwitch<Boolean>("-g", "--generate", desc = "") { generate = it }
+    cli.registerSwitch<Unit>("-h", "--help", desc = "") { showHelp = true }
+    cli.registerDefault(desc = "") { error("Unexpected '$it'") }
+
+    cli.parse(params)
+
+    if (showHelp) {
+        cli.showHelp()
+    } else {
+        serve(port)
+    }
+}
+
+fun serve(port: Int) {
+    embeddedServer(Netty, port = port) {
         install(XForwardedHeaderSupport)
         install(PartialContent) {
             maxRangeCount = 10

@@ -70,6 +70,7 @@ val baseMainClassName = "com.soywiz.landinger.MainKt"
 
 application {
     mainClassName = baseMainClassName
+    //applicationDefaultJvmArgs = listOf("--help")
 }
 
 tasks {
@@ -80,14 +81,14 @@ tasks {
         archiveBaseName.set("app")
         archiveVersion.set("")
         from(configurations.runtimeClasspath.get().files.map { if (it.isDirectory) it else zipTree(it) })
-        //kotlin.with(jar.get())
+        with(jar.get())
     }
 
     //val run by creating(JavaExec::class) {}
 
     val jarFile = fatJar.outputs.files.first()
     val server = "soywiz2"
-    val baseDir = "/home/virtual/soywiz/soywiz.com"
+    val baseDir = "/home/virtual/seo/programar.ovh"
     val baseOut = "$server:$baseDir"
     val contentDir = File(projectDir, "content")
 
@@ -95,14 +96,25 @@ tasks {
         doLast {
             exec { commandLine("scp", file("Dockerfile"), "$baseOut/Dockerfile") }
             exec { commandLine("scp", file("docker-compose.yml"), "$baseOut/docker-compose.yml") }
+            File(".env").writeText(
+                "VIRTUAL_HOST=programar.ovh\n" +
+                "VIRTUAL_PORT=8080\n"
+            )
+            exec { commandLine("scp", file(".env"), "$baseOut/.env") }
+        }
+    }
+
+    val publishContent by creating {
+        doLast {
+            exec { commandLine("rsync", "-avz", "$contentDir/", "$baseOut/app/content/") }
         }
     }
 
     val publishFatJar by creating {
         dependsOn(fatJar)
+        dependsOn(publishContent)
         doLast {
             exec { commandLine("rsync", "-avz", jarFile, "$baseOut/app/") }
-            exec { commandLine("rsync", "-avz", "$contentDir/", "$baseOut/app/content/") }
         }
     }
 
