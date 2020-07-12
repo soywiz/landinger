@@ -42,8 +42,7 @@ dependencies {
     //implementation('com.soywiz.korlibs.korio:korio-jvm:1.9.8')
     implementation("com.soywiz.korlibs.klock:klock-jvm:1.10.5")
 
-    //val korteVersion = "1.10.5"
-    val korteVersion = "10-SNAPSHOT"
+    val korteVersion = "1.10.6"
     implementation("com.soywiz.korlibs.korte:korte-jvm:$korteVersion")
     implementation("com.soywiz.korlibs.korte:korte-korio-jvm:$korteVersion")
 

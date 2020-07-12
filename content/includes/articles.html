@@ -1,8 +1,11 @@
+<div class="articles">
 {% for article in include.articles %}
 {% include "article.html"
 image=article.image
 alt=article.alt
 title=article.title
 excerpt=article.excerpt
+url=article.url
 %}
 {% end %}
+</div>
