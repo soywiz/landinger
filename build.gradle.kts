@@ -56,6 +56,8 @@ dependencies {
 
     implementation("ch.qos.logback:logback-classic:1.2.3")
 
+    implementation("com.yahoo.platform.yui:yuicompressor:2.4.8")
+
 }
 
 tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile> {

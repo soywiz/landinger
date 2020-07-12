@@ -1,10 +1,10 @@
 package com.soywiz.landinger
 
 import com.soywiz.klock.measureTime
+import com.soywiz.korio.async.launch
 import com.soywiz.korio.file.std.uniVfs
-import com.soywiz.korte.TemplateConfig
-import com.soywiz.korte.TemplateProvider
-import com.soywiz.korte.Templates
+import com.soywiz.korte.*
+import com.yahoo.platform.yui.compressor.CssCompressor
 import io.ktor.application.ApplicationCall
 import io.ktor.application.call
 import io.ktor.application.install
@@ -26,6 +26,9 @@ import io.ktor.routing.routing
 import io.ktor.server.engine.embeddedServer
 import io.ktor.server.netty.Netty
 import java.io.File
+import java.io.StringWriter
+import java.lang.StringBuilder
+import kotlin.coroutines.EmptyCoroutineContext
 
 val httpClient = HttpClient(OkHttp)
 
@@ -134,7 +137,11 @@ suspend fun main(args: Array<String>) {
 }
 
 class LandingServing {
-    val config = yaml.load<Map<String, Any?>>((File("content/config.yml").takeIfExists()?.readText() ?: "").reader())
+    @Transient
+    var config: Map<String, Any?> = mapOf()
+    fun reloadConfig() {
+        config = yaml.load<Map<String, Any?>>((File("content/config.yml").takeIfExists()?.readText() ?: "").reader())
+    }
 
     val templateProvider = object : TemplateProvider {
         override suspend fun get(template: String): String? {
@@ -156,10 +163,38 @@ class LandingServing {
         }
     }
 
+
     val layoutsProvider = TemplateProviderWithFrontMatter("content/layouts")
     val includesProvider = TemplateProviderWithFrontMatter("content/includes")
 
-    val templates = Templates(templateProvider, includesProvider, layoutsProvider, TemplateConfig())
+    val templateConfig = TemplateConfig(
+        extraTags = listOf(
+            Tag("import_css", setOf(), null) {
+                //val expr = chunks[0].tag.expr
+                val expr = chunks[0].tag.content.trimStart('"').trimEnd('"')
+                DefaultBlocks.BlockText(File("content/static/$expr").readText().compressCss())
+            }
+        )
+    )
+    val templates = Templates(templateProvider, includesProvider, layoutsProvider, templateConfig, cache = true)
+
+    var doReload = LockSignal()
+    init {
+        Thread {
+            while (true) {
+                doReload.wait()
+                Thread.sleep(50L)
+                println("Reload...")
+                entriesReload()
+                templates.invalidateCache()
+                reloadConfig()
+            }
+        }.apply { isDaemon = true }.start()
+        File("content").watchTree {
+            doReload.notifyAll()
+        }
+        reloadConfig()
+    }
 
     suspend fun servePost(call: ApplicationCall, permalink: String) {
         val entry = templateProvider.get(permalink)
