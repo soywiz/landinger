@@ -33,7 +33,7 @@ fun Route.installDeploy(folders: Folders) {
                             }
 
                             val gitExtraEnvs = arrayOf<String>(
-                                "GIT_SSH_COMMAND=ssh -o IdentitiesOnly=yes -i $rsaKeyFile"
+                                "GIT_SSH_COMMAND=ssh -o StrictHostKeyChecking=no -o IdentitiesOnly=yes -i $rsaKeyFile"
                             )
 
                             output.append(withContext(Dispatchers.IO) { rsaKeyPubFile.readText() })
