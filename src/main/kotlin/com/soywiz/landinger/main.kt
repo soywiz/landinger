@@ -153,7 +153,7 @@ fun serve(config: Config) {
                             val rsaKeyPubFile = gitFolder["rsakey.pub"]
 
                             if (!rsaKeyFile.exists()) {
-                                output.append(generateSshRsaKeyPairToFile(rsaKeyFile))
+                                output.append(generateSshRsaKeyPairToFile(rsaKeyFile, comment = "landinger"))
                             }
 
                             val gitExtraArgs = arrayOf<String>(
