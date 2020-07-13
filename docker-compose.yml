@@ -5,6 +5,7 @@ services:
     build:
       context: ./
     volumes:
+      - $PWD/app/content:/app/content:rw
       - $PWD/app:/app:ro
     networks:
       - reverse-proxy
