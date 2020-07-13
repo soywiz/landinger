@@ -2,6 +2,7 @@ package com.soywiz.landinger
 
 import com.soywiz.kds.linkedHashMapOf
 import com.soywiz.korio.file.std.get
+import com.soywiz.korio.lang.substr
 import com.soywiz.korte.*
 import com.soywiz.landinger.modules.MyLuceneIndex
 import com.soywiz.landinger.util.*
@@ -25,6 +26,9 @@ import io.ktor.server.netty.Netty
 import io.ktor.util.pipeline.PipelineContext
 import kotlinx.coroutines.runBlocking
 import java.io.File
+import java.text.DateFormat
+import java.util.*
+import kotlin.collections.LinkedHashMap
 
 suspend fun main(args: Array<String>) {
     //luceneIndex.search("hello")
@@ -156,6 +160,7 @@ class Folders(content: File) {
 
 fun FileWithFrontMatter.toTemplateContent() = TemplateContent(rawFileContent, when {
     isMarkDown -> "markdown"
+    isXml -> "xml"
     else -> null
 })
 
@@ -262,11 +267,30 @@ class LandingServing(val folders: Folders, val entries: Entries) {
             Filter("absolute") {
                 val call = context.scope.get("_call") as ApplicationCall
                 getAbsoluteUrl(subject.toString(), call)
+            },
+            Filter("excerpt") {
+                subject.toString().substr(0, 200)
+            },
+            Filter("date_format") {
+                val subject = this.subject
+                //when (subject) {
+                //    is Date -> subject
+                //}
+                subject.toString()
             }
         ),
         extraFunctions = listOf(
             TeFunction("error") {
                 throw NotFoundException()
+            },
+            TeFunction("now") {
+                Date()
+            },
+            TeFunction("last_update") {
+                entries.entries.entries.map { it.date }.max() ?: Date()
+            },
+            TeFunction("last_post_update") {
+                entries.entries.entriesByCategory["posts"]?.map { it.date }?.max() ?: Date()
             }
         ),
         contentTypeProcessor = { content, contentType ->
@@ -299,6 +323,7 @@ class LandingServing(val folders: Folders, val entries: Entries) {
 
     fun buildSiteObject(): Map<String, Any?> {
         return mapOf(
+            "config" to config,
             "data" to siteData,
             "collections" to entries.entries.entriesByCategory,
             "posts" to (entries.entries.entriesByCategory["posts"] ?: listOf()),
@@ -329,7 +354,10 @@ class LandingServing(val folders: Folders, val entries: Entries) {
             "params" to params,
             "exception" to exception
         ))
-        call.respondText(text, ContentType.Text.Html, code)
+        call.respondText(text, when {
+            entry?.isXml == true -> ContentType.Text.Xml
+            else -> ContentType.Text.Html
+        }, code)
     }
 
     suspend fun servePost(pipeline: PipelineContext<Unit, ApplicationCall>, permalink: String) = pipeline.apply {

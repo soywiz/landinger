@@ -16,7 +16,7 @@ class IndexService(val folders: Folders) {
         val postRegex = Regex("^(\\d+)-(\\d+)-(\\d+)-(.*)$")
         val time = measureTime {
             for (file in folder.walk()) {
-                if (file.extension == "md" || file.extension == "markdown" || file.extension == "html") {
+                if (file.extension == "md" || file.extension == "markdown" || file.extension == "html" || file.extension == "xml") {
                     val mfile = FileWithFrontMatter(file)
                     val header = mfile.header
                     val tags = (header["tags"] as? Iterable<String>?)?.toSet() ?: setOf()
@@ -160,8 +160,10 @@ data class Entry(
         val keyStr = key.toString()
         return when (keyStr) {
             "title" -> title
+            "date" -> date
             "icon" -> icon
             "permalink" -> permalink
+            "body" -> bodyHtml
             else -> headers[keyStr]
         }
     }
