@@ -37,6 +37,9 @@ fun Route.installDeploy(folders: Folders) {
                             )
 
                             output.append(withContext(Dispatchers.IO) { rsaKeyPubFile.readText() })
+                            output.append("\n")
+                            output.append(gitExtraEnvs.joinToString("\n"))
+                            output.append("\n")
                             val gitFetch =
                                 exec(arrayOf("git", "fetch", "--all"), gitExtraEnvs, dir = folders.content)
                             output.append(gitFetch)
