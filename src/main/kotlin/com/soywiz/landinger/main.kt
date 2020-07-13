@@ -1,13 +1,12 @@
 package com.soywiz.landinger
 
-import com.soywiz.kds.linkedHashMapOf
 import com.soywiz.korinject.AsyncInjector
 import com.soywiz.korinject.Singleton
 import com.soywiz.korinject.jvmAutomapping
-import com.soywiz.korio.async.AsyncThread
 import com.soywiz.korio.file.std.get
 import com.soywiz.korio.lang.substr
 import com.soywiz.korte.*
+import com.soywiz.korte.dynamic.Mapper2
 import com.soywiz.landinger.modules.*
 import com.soywiz.landinger.util.*
 import io.ktor.application.ApplicationCall
@@ -22,23 +21,14 @@ import io.ktor.request.host
 import io.ktor.request.uri
 import io.ktor.response.respondFile
 import io.ktor.response.respondText
-import io.ktor.routing.Route
 import io.ktor.routing.get
 import io.ktor.routing.route
 import io.ktor.routing.routing
 import io.ktor.server.engine.embeddedServer
 import io.ktor.server.netty.Netty
 import io.ktor.util.pipeline.PipelineContext
-import jdk.nashorn.internal.objects.NativeRegExp.exec
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
-import kotlinx.coroutines.withContext
 import java.io.File
-import java.security.KeyPair
-import java.security.KeyPairGenerator
-import java.security.SecureRandom
-import java.text.DateFormat
 import java.util.*
 import kotlin.collections.LinkedHashMap
 
@@ -237,6 +227,21 @@ class LandingServing(
                 //    is Date -> subject
                 //}
                 subject.toString()
+            },
+            Filter("where_exp") {
+                val ctx = this.context
+                val list = this.subject.toDynamicList()
+                val args = this.args.toDynamicList()
+                val itemName = if (args.size >= 2) args[0].toDynamicString() else "it"
+                val itemExprStr = args.last().toDynamicString()
+                val itemExpr = ExprNode.parse(itemExprStr, FilePosContext(FileContext("", itemExprStr), 0))
+
+                ctx.createScope {
+                    list.filter {
+                        ctx.scope.set(itemName, it)
+                        itemExpr.eval(ctx).toDynamicBool()
+                    }
+                }
             }
         ),
         extraFunctions = listOf(
