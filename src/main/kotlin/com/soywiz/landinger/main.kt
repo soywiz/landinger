@@ -8,11 +8,10 @@ import com.soywiz.landinger.util.*
 import io.ktor.application.ApplicationCall
 import io.ktor.application.call
 import io.ktor.application.install
-import io.ktor.features.CachingHeaders
-import io.ktor.features.PartialContent
-import io.ktor.features.XForwardedHeaderSupport
+import io.ktor.features.*
 import io.ktor.http.CacheControl
 import io.ktor.http.ContentType
+import io.ktor.http.HttpStatusCode
 import io.ktor.http.content.CachingOptions
 import io.ktor.request.host
 import io.ktor.request.uri
@@ -86,6 +85,11 @@ fun serve(config: Config) {
         val landing = LandingServing(folders, entries)
 
         routing {
+            install(StatusPages) {
+                exception<NotFoundException> { cause ->
+                    landing.serveEntry("/404", call, cause, code = HttpStatusCode.NotFound)
+                }
+            }
             route("/") {
                 //install(Sessions) {
                 //    cookie<UserSession>("SESSION") {
@@ -145,16 +149,44 @@ class Folders(content: File) {
     val pages = content["pages"]
     val data = content["data"]
     val posts = content["posts"]
+    val collections = content["collections"]
     val static = content["static"]
     val configYml = content["config.yml"]
 }
 
-fun FileWithFrontMatter.toTemplateContent() = TemplateContent(rawFileContent) {
-    when {
-        isMarkDown -> it.kramdownToHtml()
-        else -> it
+fun FileWithFrontMatter.toTemplateContent() = TemplateContent(rawFileContent, when {
+    isMarkDown -> "markdown"
+    else -> null
+})
+
+/*
+fun FileWithFrontMatter.toTemplateContent(): TemplateContent {
+    val PLACEHOLDER = "LLLLLANDINGERRRR00000PAT\\d+"
+    var n = 0
+    val replacements = LinkedHashMap<String, String>()
+
+    fun process(it: MatchResult): String {
+        val id = n++
+        val replacement = PLACEHOLDER.replace("\\d+", "$id")
+        replacements[replacement] = it.value
+        return replacement
     }
+
+    val result = bodyRaw
+        .replace(Regex("\\{\\{.*?}}", RegexOption.DOT_MATCHES_ALL)) { process(it) }
+        .replace(Regex("\\{%.*?%}", RegexOption.DOT_MATCHES_ALL)) { process(it) }
+
+    val temp = when {
+        isMarkDown -> result.kramdownToHtml()
+        isHtml -> result
+        else -> result
+    }
+
+    val finalResult = temp.replace(Regex(PLACEHOLDER)) { replacements[it.value] ?: "" }
+
+    return TemplateContent(this.createFullTextWithBody(finalResult))
 }
+*/
 
 class LandingServing(val folders: Folders, val entries: Entries) {
     @Transient
@@ -231,7 +263,18 @@ class LandingServing(val folders: Folders, val entries: Entries) {
                 val call = context.scope.get("_call") as ApplicationCall
                 getAbsoluteUrl(subject.toString(), call)
             }
-        )
+        ),
+        extraFunctions = listOf(
+            TeFunction("error") {
+                throw NotFoundException()
+            }
+        ),
+        contentTypeProcessor = { content, contentType ->
+            when (contentType) {
+                "markdown", "kramdown" -> content.kramdownToHtml()
+                else -> content
+            }
+        }
     )
     val templates = Templates(templateProvider, includesProvider, layoutsProvider, templateConfig, cache = true)
 
@@ -254,24 +297,54 @@ class LandingServing(val folders: Folders, val entries: Entries) {
         reloadConfig()
     }
 
+    fun buildSiteObject(): Map<String, Any?> {
+        return mapOf(
+            "data" to siteData,
+            "collections" to entries.entries.entriesByCategory,
+            "posts" to (entries.entries.entriesByCategory["posts"] ?: listOf()),
+            "pages" to (entries.entries.entriesByCategory["pages"] ?: listOf())
+        )
+    }
+
+    suspend fun serveEntry(
+        permalink: String, call: ApplicationCall,
+        exception: Throwable? = null,
+        code: HttpStatusCode = HttpStatusCode.OK
+    ) {
+        val entry = entries.entries[permalink]
+        val params = LinkedHashMap<String, Any?>()
+        if (entry != null) {
+            val paramsResults = entry.permalinkPattern.matchEntire(permalink)
+            if (paramsResults != null) {
+                for (name in entry.permalinkNames) {
+                    params[name] = paramsResults.groups[name]?.value
+                }
+            }
+        }
+
+        val text = templates.render(permalink, config + mapOf(
+            "_request" to mapOf("host" to call.request.host()),
+            "_call" to call,
+            "site" to buildSiteObject(),
+            "params" to params,
+            "exception" to exception
+        ))
+        call.respondText(text, ContentType.Text.Html, code)
+    }
+
     suspend fun servePost(pipeline: PipelineContext<Unit, ApplicationCall>, permalink: String) = pipeline.apply {
         val permalink = permalink.canonicalPermalink()
         val entry = templateProvider.newGet(permalink)
         if (entry != null) {
-            val text = templates.render(permalink, config + mapOf(
-                "_request" to mapOf("host" to call.request.host()),
-                "_call" to call,
-                "site" to mapOf(
-                    "data" to siteData
-                )
-            ))
-            call.respondText(text, ContentType.Text.Html)
+            serveEntry(permalink, call)
         } else {
             //println("STATIC: $permalink [0]")
             val file = folders.static.child(permalink)
             //println("STATIC: $permalink -> $file : ${file?.exists()} : ${file?.isFile}")
             if (file?.isFile == true) {
                 call.respondFile(file)
+            } else {
+                throw NotFoundException()
             }
         }
     }

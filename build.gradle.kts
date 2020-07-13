@@ -13,6 +13,8 @@ repositories {
     jcenter()
 }
 
+val korteVersion: String by project
+
 dependencies {
     //val kotlinx_html_version = "0.7.1"
     val ktorVersion = "1.3.0"
@@ -42,7 +44,6 @@ dependencies {
     //implementation('com.soywiz.korlibs.korio:korio-jvm:1.9.8')
     implementation("com.soywiz.korlibs.klock:klock-jvm:1.10.5")
 
-    val korteVersion = "1.10.6"
     implementation("com.soywiz.korlibs.korte:korte-jvm:$korteVersion")
     implementation("com.soywiz.korlibs.korte:korte-korio-jvm:$korteVersion")
 

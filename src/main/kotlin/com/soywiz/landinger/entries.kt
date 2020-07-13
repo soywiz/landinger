@@ -1,6 +1,7 @@
 package com.soywiz.landinger
 
 import com.soywiz.klock.*
+import com.soywiz.korte.dynamic.Dynamic2Gettable
 import com.soywiz.landinger.util.absoluteUrl
 import com.soywiz.landinger.util.canonicalPermalink
 import com.soywiz.landinger.util.kramdownToHtml
@@ -10,7 +11,7 @@ import io.ktor.http.*
 import java.io.*
 
 class IndexService(val folders: Folders) {
-    fun index(folder: File): EntriesStore {
+    fun index(folder: File, category: String): EntriesStore {
         val entries = arrayListOf<Entry>()
         val postRegex = Regex("^(\\d+)-(\\d+)-(\\d+)-(.*)$")
         val time = measureTime {
@@ -21,7 +22,7 @@ class IndexService(val folders: Folders) {
                     val tags = (header["tags"] as? Iterable<String>?)?.toSet() ?: setOf()
                     var date = DateTime(2020, 1, 1)
                     var permalink: String = file.nameWithoutExtension
-                    val title = header["title"]?.toString() ?: permalink
+                    val title = header["title"]?.toString()?.takeIf { it.isNotBlank() } ?: permalink
                     val dateParts = postRegex.find(file.nameWithoutExtension)
                     if (dateParts != null) {
                         val year = dateParts.groupValues[1].toInt()
@@ -50,7 +51,11 @@ class IndexService(val folders: Folders) {
                         icon = header["icon"]?.toString(),
                         title = title,
                         tags = tags,
-                        hidden = header["hidden"]?.toString() == "true"
+                        hidden = header["hidden"]?.toString() == "true",
+                        category = category,
+                        pagination_list = header["pagination_list"]?.toString(),
+                        pagination_size = header["pagination_size"]?.toString()?.toIntOrNull(),
+                        headers = header
                     )
                 }
             }
@@ -60,18 +65,33 @@ class IndexService(val folders: Folders) {
 }
 
 data class EntriesStore(val allEntries: List<Entry>) {
-    val entries = allEntries.filterNot { it.hidden }.sortedByDescending { it.date }
-    val entriesByDate = entries
-    val entriesByPermalink = entries.associateBy { it.permalink.canonicalPermalink() }
-    val entriesSocialCoding = entriesByDate.filter { "social-coding" in it.tags }
-    val entriesArticles = entriesByDate.filter { "article" in it.tags }
-    val entriesReleases = entriesByDate.filter { "release" in it.tags }
-    val entriesLifeLessons = entriesByDate.filter { "life-lessons" in it.tags }
+    val unhiddenEntries by lazy { allEntries.filterNot { it.hidden } }
+    val entries by lazy { unhiddenEntries.sortedByDescending { it.date } }
+    val entriesByDate by lazy { entries }
+    val entriesByPermalink by lazy { entries.associateBy { it.permalink } }
+    val entriesSocialCoding by lazy { entriesByDate.filter { "social-coding" in it.tags } }
+    val entriesArticles by lazy { entriesByDate.filter { "article" in it.tags } }
+    val entriesReleases by lazy { entriesByDate.filter { "release" in it.tags } }
+    val entriesLifeLessons by lazy { entriesByDate.filter { "life-lessons" in it.tags } }
+    val entriesByCategory by lazy { entries.groupBy { it.category } }
+    val dynamicEntries by lazy { entries.filter { it.permalink.contains("{") } }
 
     operator fun plus(other: EntriesStore) =
         EntriesStore(allEntries + other.allEntries)
 
-    operator fun get(permalink: String) = entriesByPermalink[permalink.canonicalPermalink()]
+    operator fun get(permalink: String): Entry? {
+        val cpermalink = permalink.canonicalPermalink()
+        val result = entriesByPermalink[cpermalink]
+        if (result != null) return result
+
+        for (de in dynamicEntries) {
+            if (de.permalinkPattern.matches(cpermalink)) {
+                return de
+            }
+        }
+
+        return null
+    }
 }
 
 val RequestConnectionPoint.schemePlusHost: String get() = run {
@@ -91,13 +111,13 @@ val RequestConnectionPoint.schemePlusHost: String get() = run {
     }
 }
 
-class FileWithFrontMatter(val file: File) {
+data class FileWithFrontMatter(val file: File) {
     val rawFileContent by lazy { file.readText() }
     val isMarkDown = file.name.endsWith(".md") || file.name.endsWith(".markdown")
     val isHtml = file.name.endsWith(".html")
     val isXml = file.name.endsWith(".xml")
     private val parts by lazy {
-        val parts = rawFileContent.split("---\n", limit = 3)
+        val parts = (rawFileContent + "\n").split("---\n", limit = 3)
         when {
             parts.size >= 3 -> listOf(parts[1], parts[2])
             else -> listOf(null, parts[0])
@@ -126,10 +146,41 @@ data class Entry(
     val icon: String?,
     val title: String,
     val tags: Set<String>,
-    val hidden: Boolean
-) {
+    val hidden: Boolean,
+    val category: String,
+    val pagination_list: String?,
+    val pagination_size: Int?,
+    val headers: Map<String, Any?>
+) : Dynamic2Gettable {
+    init {
+        check(permalink == permalink.canonicalPermalink())
+    }
+
+    override suspend fun dynamic2Get(key: Any?): Any? {
+        val keyStr = key.toString()
+        return when (keyStr) {
+            "title" -> title
+            "icon" -> icon
+            "permalink" -> permalink
+            else -> headers[keyStr]
+        }
+    }
+
     val file = mfile.file
     fun url(call: ApplicationCall): String = this.permalinkUri.absoluteUrl(call)
+
+    val isDynamic = permalink.contains("{")
+    val permalinkNames = arrayListOf<String>()
+    val permalinkPattern = Regex("^/*" + permalink
+        .replace(Regex("\\{(\\w+)}")) {
+            val name = it.groupValues[1]
+            permalinkNames += name
+            if (name == "n") {
+                "(?<$name>\\d+)"
+            } else {
+                "(?<$name>\\w+)"
+            }
+        } + "/*\$")
 
     val isMarkDown = mfile.isMarkDown
     val isHtml = mfile.isHtml
@@ -148,11 +199,17 @@ class Entries(val folders: Folders, val indexService: IndexService) {
     val entries: EntriesStore
         get() = synchronized(_entriesLock) {
             if (_entries == null) {
+                val collectionList = folders.collections.listFiles { file -> file.isDirectory && !file.name.startsWith(".") }?.toList() ?: listOf()
                 val time = measureTime {
-                    val entries = indexService.index(folders.posts) + indexService.index(folders.pages)
+                    val posts = indexService.index(folders.posts, "posts")
+                    val pages = indexService.index(folders.pages, "pages")
+                    var entries = posts + pages
+                    for (collection in collectionList) {
+                        entries += indexService.index(collection, collection.name)
+                    }
                     _entries = entries
                 }
-                println("Loaded ${entries.entries.size} posts in $time")
+                println("Loaded ${entries.entries.size} pages in $time. Collections: [${collectionList.joinToString(", ") { it.name }}]")
             }
             _entries!!
         }
