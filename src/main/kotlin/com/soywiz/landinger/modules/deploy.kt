@@ -24,31 +24,28 @@ fun Route.installDeploy(folders: Folders) {
                         running = true
                         val output = StringBuilder()
                         try {
-                            val gitFolder = folders.content[".gitssh"]
+                            val gitFolder = folders.content[".gitssh"].absoluteFile
                             val rsaKeyFile = gitFolder["rsakey"]
                             val rsaKeyPubFile = gitFolder["rsakey.pub"]
 
                             if (!rsaKeyFile.exists()) {
-                                output.append(generateSshRsaKeyPairToFile(rsaKeyFile, comment = "landinger"))
+                                output.append(generateSshRsaKeyPairToFile(rsaKeyFile, comment = "landinger-${System.currentTimeMillis()}"))
                             }
 
-                            val gitExtraArgs = arrayOf<String>(
-                                //"-c", "core.sshCommand=/usr/bin/ssh -i $rsaKeyFile"
-                            )
                             val gitExtraEnvs = arrayOf<String>(
                                 "GIT_SSH_COMMAND=ssh -o IdentitiesOnly=yes -i $rsaKeyFile"
                             )
 
                             output.append(withContext(Dispatchers.IO) { rsaKeyPubFile.readText() })
                             val gitFetch =
-                                exec(arrayOf("git", "fetch", *gitExtraArgs, "--all"), gitExtraEnvs, folders.content)
+                                exec(arrayOf("git", "fetch", "--all"), gitExtraEnvs, dir = folders.content)
                             output.append(gitFetch)
                             if (gitFetch.success) {
                                 output.append(
                                     exec(
-                                        arrayOf("git", "reset", *gitExtraArgs, "--hard", "origin/master"),
+                                        arrayOf("git", "reset", "--hard", "origin/master"),
                                         gitExtraEnvs,
-                                        folders.content
+                                        dir = folders.content
                                     )
                                 )
                             }
