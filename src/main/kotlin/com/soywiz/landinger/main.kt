@@ -228,6 +228,13 @@ class LandingServing(
                 //}
                 subject.toString()
             },
+            Filter("date_to_string") {
+                val subject = this.subject
+                //when (subject) {
+                //    is Date -> subject
+                //}
+                subject.toString()
+            },
             Filter("where_exp") {
                 val ctx = this.context
                 val list = this.subject.toDynamicList()
