@@ -5,9 +5,7 @@ import com.soywiz.korio.async.AsyncThread
 import com.soywiz.korio.file.std.get
 import com.soywiz.korio.lang.substr
 import com.soywiz.korte.*
-import com.soywiz.landinger.modules.MyKeyPair
 import com.soywiz.landinger.modules.MyLuceneIndex
-import com.soywiz.landinger.modules.generateSshRsaKeyPairToFile
 import com.soywiz.landinger.util.*
 import io.ktor.application.ApplicationCall
 import io.ktor.application.call
