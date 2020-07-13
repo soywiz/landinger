@@ -226,10 +226,8 @@ class LandingServing(
                 val absPath = getAbsoluteUrl(path, context.scope)
                 args.map { it.toDynamicInt() }.joinToString(", ") { "$absPath ${it}w" }
             },
-            Filter("absolute") {
-                val call = context.scope.get("_call") as ApplicationCall
-                getAbsoluteUrl(subject.toString(), call)
-            },
+            Filter("absolute") { getAbsoluteUrl(subject.toString(), context.scope.get("_call") as ApplicationCall) },
+            Filter("absolute_url") { getAbsoluteUrl(subject.toString(), context.scope.get("_call") as ApplicationCall) },
             Filter("excerpt") {
                 subject.toString().substr(0, 200)
             },
