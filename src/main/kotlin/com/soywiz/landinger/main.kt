@@ -1,12 +1,14 @@
 package com.soywiz.landinger
 
 import com.soywiz.kds.linkedHashMapOf
+import com.soywiz.korinject.AsyncInjector
+import com.soywiz.korinject.Singleton
+import com.soywiz.korinject.jvmAutomapping
 import com.soywiz.korio.async.AsyncThread
 import com.soywiz.korio.file.std.get
 import com.soywiz.korio.lang.substr
 import com.soywiz.korte.*
-import com.soywiz.landinger.modules.MyLuceneIndex
-import com.soywiz.landinger.modules.installDeploy
+import com.soywiz.landinger.modules.*
 import com.soywiz.landinger.util.*
 import io.ktor.application.ApplicationCall
 import io.ktor.application.call
@@ -69,95 +71,54 @@ suspend fun main(args: Array<String>) {
     }
 }
 
-data class Config(
-    var port: Int = System.getenv("VIRTUAL_PORT")?.toIntOrNull() ?: 8080,
-    var host: String = "127.0.0.1",
-    var contentDir: String = "content"
-)
-
 fun serve(config: Config) {
     embeddedServer(Netty, port = config.port) {
-        install(XForwardedHeaderSupport)
-        install(PartialContent) {
-            maxRangeCount = 10
-        }
-        install(CachingHeaders) {
-            options { outgoingContent ->
-                val contentType = outgoingContent.contentType?.withoutParameters() ?: ContentType.Any
-                when {
-                    contentType.match(ContentType.Text.CSS) -> CachingOptions(CacheControl.MaxAge(maxAgeSeconds = 2 * 60 * 60))
-                    contentType.match(ContentType.Image.Any) -> CachingOptions(CacheControl.MaxAge(maxAgeSeconds = 365 * 24 * 60 * 60))
-                    else -> null
+        runBlocking {
+            install(XForwardedHeaderSupport)
+            install(PartialContent) {
+                maxRangeCount = 10
+            }
+            install(CachingHeaders) {
+                options { outgoingContent ->
+                    val contentType = outgoingContent.contentType?.withoutParameters() ?: ContentType.Any
+                    when {
+                        contentType.match(ContentType.Text.CSS) -> CachingOptions(CacheControl.MaxAge(maxAgeSeconds = 2 * 60 * 60))
+                        contentType.match(ContentType.Image.Any) -> CachingOptions(CacheControl.MaxAge(maxAgeSeconds = 365 * 24 * 60 * 60))
+                        else -> null
+                    }
                 }
             }
-        }
 
-        val folders = Folders(File(config.contentDir))
-        val indexService = IndexService(folders)
-        val entries = Entries(folders, indexService)
-        val myLuceneIndex = MyLuceneIndex(entries)
-        val landing = LandingServing(folders, entries)
+            val injector = AsyncInjector().jvmAutomapping()
+            injector.mapInstance(Folders(File(config.contentDir)))
+            val landing = injector.get<LandingServing>()
 
-        routing {
-            install(StatusPages) {
-                exception<NotFoundException> { cause ->
-                    landing.serveEntry("/404", call, cause, code = HttpStatusCode.NotFound)
+            installLogin(injector)
+            installDeploy(injector)
+            routing {
+                install(StatusPages) {
+                    exception<NotFoundException> { cause ->
+                        try {
+                            landing.serveEntry("/404", call, cause, code = HttpStatusCode.NotFound)
+                        } catch (e: Throwable) {
+                            call.respondText("Not Found", ContentType.Text.Html, HttpStatusCode.NotFound)
+                        }
+                    }
                 }
-            }
-            route("/") {
-                //install(Sessions) {
-                //    cookie<UserSession>("SESSION") {
-                //        cookie.path = "/"
-                //        transform(SessionTransportTransformerEncrypt(SECRET_SESSION_ENCRYPT_KEY, SECRET_SESSION_AUTH_KEY))
-                //    }
-                //    cookie<LastVisitedPageSession>("LAST_VISITED_PAGE") {
-                //        cookie.path = "/"
-                //        transform(SessionTransportTransformerEncrypt(SECRET_SESSION_ENCRYPT_KEY, SECRET_SESSION_AUTH_KEY))
-                //    }
-                //}
-                //registerRss()
-                //get("/login/oauth/authorize") {
-                //    val code = call.request.queryParameters["code"] ?: error("Missing code")
-                //    val accessToken = oauthGetAccessToken(code)
-                //    val login = getUserLogin(accessToken)
-                //    sponsorInfoCache.remove(login)
-                //    getCachedSponsor(login)
-                //    call.sessions.set(UserSession(login))
-                //    call.respondRedirect(call.sessions.get<LastVisitedPageSession>()?.page ?: "/")
-                //}
-                //route("/__gh_reload") {
-                //    handle {
-                //        val respond = localVfs(docsRoot).execToString("git", "pull")
-                //        entriesReload()
-                //        println("__gh_reload: $respond")
-                //        //call.respondText(respond)
-                //        call.respondRedirect("/")
-                //    }
-                //}
-                //get("/") {
-                //    call.serveHome(page = 1)
-                //}
-                //get("/page/{page}") {
-                //    val page = call.parameters["page"]?.toInt() ?: error("Invalid page")
-                //    call.serveHome(page = page)
-                //}
-                //get("/logout") {
-                //    call.sessions.clear<UserSession>()
-                //    call.respondRedirect(call.sessions.get<LastVisitedPageSession>()?.page ?: "/")
-                //}
-                installDeploy(folders)
-                get("/") {
-                    landing.servePost(this, "")
-                }
-                get("/{permalink...}") {
-                    landing.servePost(this, call.request.uri)
+                route("/") {
+                    get("/") {
+                        landing.servePost(this, "")
+                    }
+                    get("/{permalink...}") {
+                        landing.servePost(this, call.request.uri)
+                    }
                 }
             }
         }
     }.start(wait = true)
 }
 
-
+@Singleton
 class Folders(content: File) {
     val content = content.canonicalFile
     val layouts = content["layouts"]
@@ -205,24 +166,13 @@ fun FileWithFrontMatter.toTemplateContent(): TemplateContent {
 }
 */
 
-class LandingServing(val folders: Folders, val entries: Entries) {
-    @Transient
-    var config: Map<String, Any?> = mapOf()
-
-    @Transient
-    var siteData: Map<String, Any?> = mapOf()
-
-    fun reloadConfig() {
-        config = yaml.load<Map<String, Any?>>((folders.configYml.takeIfExists()?.readText() ?: "").reader())
-        this.siteData = linkedHashMapOf<String, Any?>().also { siteData ->
-            for (file in folders.data.walkTopDown()) {
-                if (file.extension == "yml") {
-                    siteData[file.nameWithoutExtension] = yaml.load<Any?>(file.readText().reader())
-                }
-            }
-        }
-    }
-
+@Singleton
+class LandingServing(
+    val folders: Folders,
+    val entries: Entries,
+    val configService: ConfigService,
+    val pageShownBus: PageShownBus
+) {
     val templateProvider = object : NewTemplateProvider {
         override suspend fun newGet(template: String): TemplateContent? {
             val entry = entries.entries[template] ?: return null
@@ -324,19 +274,19 @@ class LandingServing(val folders: Folders, val entries: Entries) {
                 println("Reload...")
                 entries.entriesReload()
                 templates.invalidateCache()
-                reloadConfig()
+                configService.reloadConfig()
             }
         }.apply { isDaemon = true }.start()
         folders.content.watchTree {
             doReload.notifyAll()
         }
-        reloadConfig()
+        configService.reloadConfig()
     }
 
     fun buildSiteObject(): Map<String, Any?> {
         return mapOf(
-            "config" to config,
-            "data" to siteData,
+            "config" to configService.config,
+            "data" to configService.siteData,
             "collections" to entries.entries.entriesByCategory,
             "posts" to (entries.entries.entriesByCategory["posts"] ?: listOf()),
             "pages" to (entries.entries.entriesByCategory["pages"] ?: listOf())
@@ -359,13 +309,19 @@ class LandingServing(val folders: Folders, val entries: Entries) {
             }
         }
 
-        val text = templates.render(permalink, config + mapOf(
+        if (code.value >= HttpStatusCode.OK.value) {
+            pageShownBus.pageShown(PageShownBus.Page(call, entry, permalink))
+        }
+
+        val tplParams = configService.config + mapOf(
             "_request" to mapOf("host" to call.request.host()),
             "_call" to call,
             "site" to buildSiteObject(),
             "params" to params,
             "exception" to exception
-        ))
+        ) + configService.extraConfig
+        //println("configService.extraConfig: ${configService.extraConfig} : $configService")
+        val text = templates.render(permalink, tplParams)
         call.respondText(text, when {
             entry?.isXml == true -> ContentType.Text.Xml
             else -> ContentType.Text.Html

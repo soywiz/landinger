@@ -14,6 +14,7 @@ repositories {
 }
 
 val korteVersion: String by project
+val korinjectVersion: String by project
 
 dependencies {
     //val kotlinx_html_version = "0.7.1"
@@ -46,6 +47,8 @@ dependencies {
 
     implementation("com.soywiz.korlibs.korte:korte-jvm:$korteVersion")
     implementation("com.soywiz.korlibs.korte:korte-korio-jvm:$korteVersion")
+
+    implementation("com.soywiz.korlibs.korinject:korinject-jvm:$korinjectVersion")
 
     implementation("com.soywiz.kminiorm:kminiorm:0.5.0")
     implementation("com.soywiz.kminiorm:kminiorm-jdbc:0.5.0")

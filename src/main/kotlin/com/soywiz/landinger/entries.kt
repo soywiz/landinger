@@ -1,6 +1,7 @@
 package com.soywiz.landinger
 
 import com.soywiz.klock.*
+import com.soywiz.korinject.Singleton
 import com.soywiz.korte.dynamic.Dynamic2Gettable
 import com.soywiz.landinger.util.absoluteUrl
 import com.soywiz.landinger.util.canonicalPermalink
@@ -195,6 +196,7 @@ data class Entry(
     val htmlWithHeader get() = mfile.fileContentHtml
 }
 
+@Singleton
 class Entries(val folders: Folders, val indexService: IndexService) {
     private val _entriesLock = Any()
     private var _entries: EntriesStore? = null

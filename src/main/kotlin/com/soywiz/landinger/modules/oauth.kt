@@ -11,17 +11,13 @@ import io.ktor.http.*
 import io.ktor.http.content.*
 import java.net.*
 
-val GH_CLIENT_ID by lazy { System.getenv("GH_CLIENT_ID") }
-val GH_CLIENT_SECRET by lazy { System.getenv("GH_CLIENT_SECRET") }
-val GH_SPONSOR_TOKEN by lazy { System.getenv("GH_SPONSOR_TOKEN") }
-
 private val oauthHttpClient = HttpClient(OkHttp)
 
-suspend fun oauthGetAccessToken(code: String): String {
+suspend fun oauthGetAccessToken(code: String, clientId: String, clientSecret: String): String {
     val result = oauthHttpClient.post<String>(URL("https://github.com/login/oauth/access_token")) {
         body = FormDataContent(Parameters.build {
-            append("client_id", GH_CLIENT_ID)
-            append("client_secret", GH_CLIENT_SECRET)
+            append("client_id", clientId)
+            append("client_secret", clientSecret)
             append("code", code)
         })
     }
@@ -77,7 +73,7 @@ suspend fun getUserLogin(access_token: String): String {
 
 data class SponsorInfo(val login: String, val price: Int, val date: DateTime)
 
-suspend fun getSponsorInfo(login: String, access_token: String = GH_SPONSOR_TOKEN): SponsorInfo {
+suspend fun getSponsorInfo(login: String, access_token: String): SponsorInfo {
     val data = graphqlCall(
         access_token, """
         query { 
@@ -118,24 +114,4 @@ suspend fun getSponsorInfo(login: String, access_token: String = GH_SPONSOR_TOKE
     )
 }
 
-data class LastVisitedPageSession(val page: String)
-data class UserSession(val login: String)
 
-val sponsorInfoCache = LinkedHashMap<String, SponsorInfo>()
-
-suspend fun getCachedSponsor(login: String): SponsorInfo {
-    return sponsorInfoCache.getOrPut(login) {
-        try {
-            getSponsorInfo(login)
-        } catch (e: Throwable) {
-            SponsorInfo(login, 0, DateTime.now())
-        }
-    }.also {
-        val timeSinceCached = DateTime.now() - it.date
-        if (timeSinceCached.days >= 7.0) {
-            sponsorInfoCache.remove(it.login)
-        }
-    }
-}
-
-val LOGIN_URL = "https://github.com/login/oauth/authorize?client_id=$GH_CLIENT_ID&scope=read:user"
