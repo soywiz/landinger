@@ -164,7 +164,15 @@ fun serve(config: Config) {
                         //val out1 = ""
                         //val out2 = ""
                         val out1 = exec(arrayOf("git", "fetch", *gitExtraArgs, "--all"), gitExtraEnvs, folders.content)
-                        val out2 = exec(arrayOf("git", "reset", *gitExtraArgs, "--hard", "origin/master"), gitExtraEnvs, folders.content)
+                        val out2 = if (out1.success) {
+                            exec(
+                                arrayOf("git", "reset", *gitExtraArgs, "--hard", "origin/master"),
+                                gitExtraEnvs,
+                                folders.content
+                            )
+                        } else {
+                            "-"
+                        }
                         call.respondText(text + "\n$out1\n$out2", ContentType.Text.Plain)
                     }
                 }

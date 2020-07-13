@@ -9,6 +9,7 @@ data class ExecResult(
     val error: String,
     val exitCode: Int
 ) {
+    val success get() = exitCode == 0
     val outputError: String by lazy { "$output$error" }
     override fun toString(): String = outputError
 }
