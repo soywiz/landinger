@@ -149,8 +149,11 @@ fun serve(config: Config) {
                         val gitFolder = folders.content[".gitssh"]
                         val rsaKeyFile = gitFolder["rsakey"]
                         val rsaKeyPubFile = gitFolder["rsakey.pub"]
+
+                        val output = StringBuilder()
+
                         if (!rsaKeyFile.exists()) {
-                            generateSshRsaKeyPairToFile(rsaKeyFile)
+                            output.append(generateSshRsaKeyPairToFile(rsaKeyFile))
                         }
 
                         val gitExtraArgs = arrayOf<String>(
@@ -161,19 +164,15 @@ fun serve(config: Config) {
                         )
 
                         val text = withContext(Dispatchers.IO) { rsaKeyPubFile.readText() }
-                        //val out1 = ""
-                        //val out2 = ""
-                        val out1 = exec(arrayOf("git", "fetch", *gitExtraArgs, "--all"), gitExtraEnvs, folders.content)
-                        val out2 = if (out1.success) {
-                            exec(
+                        val gitFetch = output.append(exec(arrayOf("git", "fetch", *gitExtraArgs, "--all"), gitExtraEnvs, folders.content))
+                        if (gitFetch.success) {
+                            output.append(exec(
                                 arrayOf("git", "reset", *gitExtraArgs, "--hard", "origin/master"),
                                 gitExtraEnvs,
                                 folders.content
-                            ).toString()
-                        } else {
-                            "-"
+                            ))
                         }
-                        call.respondText(text + "\n$out1\n$out2", ContentType.Text.Plain)
+                        call.respondText("$text$output", ContentType.Text.Plain)
                     }
                 }
                 get("/") {
