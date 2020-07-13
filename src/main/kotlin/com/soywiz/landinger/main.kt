@@ -323,11 +323,13 @@ class LandingServing(
         ) + configService.extraConfig
         //println("configService.extraConfig: ${configService.extraConfig} : $configService")
         val text = templates.render(permalink, tplParams)
-        val finalText = if (!page.logged) {
-            text.replace(Regex("(<!--SPONSOR-->).*?(<!--ENDSPONSOR-->)", RegexOption.DOT_MATCHES_ALL), "")
-        } else {
-            text.replace(Regex("(<!--NOSPONSOR-->).*?(<!--ENDNOSPONSOR-->)", RegexOption.DOT_MATCHES_ALL), "")
-        }
+        val finalText = text
+            .replace(Regex("\\$((?:NO)?SPONSOR)\\$:(.*?):\\$\\$", RegexOption.DOT_MATCHES_ALL)) {
+                val kind = it.groupValues[1]
+                val content = it.groupValues[2]
+                val kindSponsor = kind == "SPONSOR"
+                if (page.logged == kindSponsor) content else ""
+            }
 
         call.respondText(finalText, when {
             entry?.isXml == true -> ContentType.Text.Xml
