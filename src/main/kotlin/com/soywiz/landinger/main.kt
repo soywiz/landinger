@@ -6,6 +6,7 @@ import com.soywiz.korio.file.std.get
 import com.soywiz.korio.lang.substr
 import com.soywiz.korte.*
 import com.soywiz.landinger.modules.MyLuceneIndex
+import com.soywiz.landinger.modules.installDeploy
 import com.soywiz.landinger.util.*
 import io.ktor.application.ApplicationCall
 import io.ktor.application.call
@@ -19,6 +20,7 @@ import io.ktor.request.host
 import io.ktor.request.uri
 import io.ktor.response.respondFile
 import io.ktor.response.respondText
+import io.ktor.routing.Route
 import io.ktor.routing.get
 import io.ktor.routing.route
 import io.ktor.routing.routing
@@ -95,7 +97,6 @@ fun serve(config: Config) {
         val entries = Entries(folders, indexService)
         val myLuceneIndex = MyLuceneIndex(entries)
         val landing = LandingServing(folders, entries)
-        val gitAsyncThread = AsyncThread()
 
         routing {
             install(StatusPages) {
@@ -144,46 +145,7 @@ fun serve(config: Config) {
                 //    call.sessions.clear<UserSession>()
                 //    call.respondRedirect(call.sessions.get<LastVisitedPageSession>()?.page ?: "/")
                 //}
-                route("/__git__") {
-                    handle {
-                        gitAsyncThread {
-                            val output = StringBuilder()
-                            try {
-                                val gitFolder = folders.content[".gitssh"]
-                                val rsaKeyFile = gitFolder["rsakey"]
-                                val rsaKeyPubFile = gitFolder["rsakey.pub"]
-
-                                if (!rsaKeyFile.exists()) {
-                                    output.append(generateSshRsaKeyPairToFile(rsaKeyFile, comment = "landinger"))
-                                }
-
-                                val gitExtraArgs = arrayOf<String>(
-                                    //"-c", "core.sshCommand=/usr/bin/ssh -i $rsaKeyFile"
-                                )
-                                val gitExtraEnvs = arrayOf<String>(
-                                    "GIT_SSH_COMMAND=ssh -o IdentitiesOnly=yes -i $rsaKeyFile"
-                                )
-
-                                output.append(withContext(Dispatchers.IO) { rsaKeyPubFile.readText() })
-                                val gitFetch =
-                                    exec(arrayOf("git", "fetch", *gitExtraArgs, "--all"), gitExtraEnvs, folders.content)
-                                output.append(gitFetch)
-                                if (gitFetch.success) {
-                                    output.append(
-                                        exec(
-                                            arrayOf("git", "reset", *gitExtraArgs, "--hard", "origin/master"),
-                                            gitExtraEnvs,
-                                            folders.content
-                                        )
-                                    )
-                                }
-                            } catch (e: Throwable) {
-                                output.append(e.toString())
-                            }
-                            call.respondText("$output", ContentType.Text.Plain)
-                        }
-                    }
-                }
+                installDeploy(folders)
                 get("/") {
                     landing.servePost(this, "")
                 }
