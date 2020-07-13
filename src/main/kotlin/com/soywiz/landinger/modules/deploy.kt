@@ -15,43 +15,53 @@ import kotlinx.coroutines.withContext
 
 fun Route.installDeploy(folders: Folders) {
     val gitAsyncThread = AsyncThread()
+    var running = false
     route("/__git__") {
         handle {
-            gitAsyncThread {
-                val output = StringBuilder()
-                try {
-                    val gitFolder = folders.content[".gitssh"]
-                    val rsaKeyFile = gitFolder["rsakey"]
-                    val rsaKeyPubFile = gitFolder["rsakey.pub"]
+            if (!running) {
+                gitAsyncThread {
+                    try {
+                        running = true
+                        val output = StringBuilder()
+                        try {
+                            val gitFolder = folders.content[".gitssh"]
+                            val rsaKeyFile = gitFolder["rsakey"]
+                            val rsaKeyPubFile = gitFolder["rsakey.pub"]
 
-                    if (!rsaKeyFile.exists()) {
-                        output.append(generateSshRsaKeyPairToFile(rsaKeyFile, comment = "landinger"))
-                    }
+                            if (!rsaKeyFile.exists()) {
+                                output.append(generateSshRsaKeyPairToFile(rsaKeyFile, comment = "landinger"))
+                            }
 
-                    val gitExtraArgs = arrayOf<String>(
-                        //"-c", "core.sshCommand=/usr/bin/ssh -i $rsaKeyFile"
-                    )
-                    val gitExtraEnvs = arrayOf<String>(
-                        "GIT_SSH_COMMAND=ssh -o IdentitiesOnly=yes -i $rsaKeyFile"
-                    )
-
-                    output.append(withContext(Dispatchers.IO) { rsaKeyPubFile.readText() })
-                    val gitFetch =
-                        exec(arrayOf("git", "fetch", *gitExtraArgs, "--all"), gitExtraEnvs, folders.content)
-                    output.append(gitFetch)
-                    if (gitFetch.success) {
-                        output.append(
-                            exec(
-                                arrayOf("git", "reset", *gitExtraArgs, "--hard", "origin/master"),
-                                gitExtraEnvs,
-                                folders.content
+                            val gitExtraArgs = arrayOf<String>(
+                                //"-c", "core.sshCommand=/usr/bin/ssh -i $rsaKeyFile"
                             )
-                        )
+                            val gitExtraEnvs = arrayOf<String>(
+                                "GIT_SSH_COMMAND=ssh -o IdentitiesOnly=yes -i $rsaKeyFile"
+                            )
+
+                            output.append(withContext(Dispatchers.IO) { rsaKeyPubFile.readText() })
+                            val gitFetch =
+                                exec(arrayOf("git", "fetch", *gitExtraArgs, "--all"), gitExtraEnvs, folders.content)
+                            output.append(gitFetch)
+                            if (gitFetch.success) {
+                                output.append(
+                                    exec(
+                                        arrayOf("git", "reset", *gitExtraArgs, "--hard", "origin/master"),
+                                        gitExtraEnvs,
+                                        folders.content
+                                    )
+                                )
+                            }
+                        } catch (e: Throwable) {
+                            output.append(e.toString())
+                        }
+                        call.respondText("$output", ContentType.Text.Plain)
+                    } finally {
+                        running = false
                     }
-                } catch (e: Throwable) {
-                    output.append(e.toString())
                 }
-                call.respondText("$output", ContentType.Text.Plain)
+            } else {
+                call.respondText("BUSY", ContentType.Text.Plain)
             }
         }
     }
