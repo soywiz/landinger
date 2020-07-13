@@ -309,8 +309,9 @@ class LandingServing(
             }
         }
 
+        val page = PageShownBus.Page(call, entry, permalink)
         if (code.value >= HttpStatusCode.OK.value) {
-            pageShownBus.pageShown(PageShownBus.Page(call, entry, permalink))
+            pageShownBus.pageShown(page)
         }
 
         val tplParams = configService.config + mapOf(
@@ -322,7 +323,13 @@ class LandingServing(
         ) + configService.extraConfig
         //println("configService.extraConfig: ${configService.extraConfig} : $configService")
         val text = templates.render(permalink, tplParams)
-        call.respondText(text, when {
+        val finalText = if (!page.logged) {
+            text.replace(Regex("(<!--SPONSOR-->).*?(<!--ENDSPONSOR-->)", RegexOption.DOT_MATCHES_ALL), "")
+        } else {
+            text.replace(Regex("(<!--NOSPONSOR-->).*?(<!--ENDNOSPONSOR-->)", RegexOption.DOT_MATCHES_ALL), "")
+        }
+
+        call.respondText(finalText, when {
             entry?.isXml == true -> ContentType.Text.Xml
             else -> ContentType.Text.Html
         }, code)

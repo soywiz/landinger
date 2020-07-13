@@ -84,6 +84,7 @@ suspend fun Application.installLogin(injector: AsyncInjector) {
             } catch (e: IllegalStateException) {
                 null
             }
+            it.logged = true
             it.extraConfig["session"] = mapOf(
                 "logged" to ((userSession?.login) != null),
                 "login" to userSession?.login

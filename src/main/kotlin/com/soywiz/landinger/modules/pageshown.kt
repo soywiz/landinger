@@ -11,6 +11,7 @@ class PageShownBus {
     val pageShown = Signal<Page>()
     //data class Page(val context: PipelineContext<Unit, ApplicationCall>, val entry: Entry?)
     data class Page(val call: ApplicationCall, val entry: Entry?, val permalink: String) {
+        var logged = false
         val extraConfig = LinkedHashMap<String, Any?>()
     }
 }
