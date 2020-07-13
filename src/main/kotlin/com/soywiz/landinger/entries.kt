@@ -1,6 +1,7 @@
 package com.soywiz.landinger
 
 import com.soywiz.klock.*
+import com.soywiz.klock.jvm.toDate
 import com.soywiz.korinject.Singleton
 import com.soywiz.korte.dynamic.Dynamic2Gettable
 import com.soywiz.landinger.util.absoluteUrl

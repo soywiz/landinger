@@ -1,18 +1,19 @@
 package com.soywiz.landinger
 
+import com.soywiz.klock.DateFormat
+import com.soywiz.klock.DateTime
+import com.soywiz.klock.jvm.toDate
 import com.soywiz.korinject.AsyncInjector
 import com.soywiz.korinject.Singleton
 import com.soywiz.korinject.jvmAutomapping
 import com.soywiz.korio.file.std.get
 import com.soywiz.korio.lang.substr
 import com.soywiz.korte.*
-import com.soywiz.korte.dynamic.Mapper2
 import com.soywiz.landinger.modules.*
 import com.soywiz.landinger.util.*
 import io.ktor.application.ApplicationCall
 import io.ktor.application.call
 import io.ktor.application.install
-import io.ktor.client.features.RedirectResponseException
 import io.ktor.features.*
 import io.ktor.http.CacheControl
 import io.ktor.http.ContentType
@@ -31,8 +32,10 @@ import io.ktor.server.netty.Netty
 import io.ktor.util.pipeline.PipelineContext
 import kotlinx.coroutines.runBlocking
 import java.io.File
+import java.text.SimpleDateFormat
 import java.util.*
 import kotlin.collections.LinkedHashMap
+
 
 suspend fun main(args: Array<String>) {
     //luceneIndex.search("hello")
@@ -99,6 +102,11 @@ fun serve(config: Config) {
                     exception<HttpRedirectException> { cause ->
                         call.respondRedirect(cause.url, cause.permanent)
                     }
+                    exception<Throwable> { cause ->
+                        cause.printStackTrace()
+                        println(cause.toString())
+                        call.respondText("Internal Server Error", ContentType.Text.Plain, HttpStatusCode.InternalServerError)
+                    }
                 }
                 route("/") {
                     get("/") {
@@ -126,11 +134,16 @@ class Folders(content: File) {
     val configYml = content["config.yml"]
 }
 
-fun FileWithFrontMatter.toTemplateContent() = TemplateContent(rawFileContent, when {
-    isMarkDown -> "markdown"
-    isXml -> "xml"
-    else -> null
-})
+fun FileWithFrontMatter.toTemplateContent(): TemplateContent {
+    //println("rawFileContent: $rawFileContent")
+    return TemplateContent(
+        rawFileContent, when {
+            isMarkDown -> "markdown"
+            isXml -> "xml"
+            else -> null
+        }
+    )
+}
 
 /*
 fun FileWithFrontMatter.toTemplateContent(): TemplateContent {
@@ -233,7 +246,17 @@ class LandingServing(
                 //when (subject) {
                 //    is Date -> subject
                 //}
-                subject.toString()
+                if (args.isEmpty()) {
+                    subject.toString()
+                } else {
+                    val date = when (subject) {
+                        is Date -> subject
+                        is DateTime -> subject.toDate()
+                        else -> parseAnyDate(subject.toString())
+                    }
+                    SimpleDateFormat(args[0].toDynamicString()).format(date ?: Date(0L))
+                }
+
             },
             Filter("date_to_string") {
                 val subject = this.subject
@@ -322,7 +345,8 @@ class LandingServing(
             val paramsResults = entry.permalinkPattern.matchEntire(permalink)
             if (paramsResults != null) {
                 for (name in entry.permalinkNames) {
-                    params[name] = paramsResults.groups[name]?.value
+                    val value = paramsResults.groups[name]?.value
+                    params[name] = if (name == "n") value?.toInt() else value
                 }
             }
         }
@@ -337,6 +361,7 @@ class LandingServing(
             "_call" to call,
             "site" to buildSiteObject(),
             "params" to params,
+            "page" to entry,
             "exception" to exception
         ) + configService.extraConfig
         //println("configService.extraConfig: ${configService.extraConfig} : $configService")
@@ -377,3 +402,50 @@ class LandingServing(
     }
 }
 
+private val DATE_FORMAT_REGEXPS: Map<String, String> =
+    mapOf(
+            "^\\d{8}$" to "yyyyMMdd",
+            "^\\d{1,2}-\\d{1,2}-\\d{4}$" to "dd-MM-yyyy",
+            "^\\d{4}-\\d{1,2}-\\d{1,2}$" to "yyyy-MM-dd",
+            "^\\d{1,2}/\\d{1,2}/\\d{4}$" to "MM/dd/yyyy",
+            "^\\d{4}/\\d{1,2}/\\d{1,2}$" to "yyyy/MM/dd",
+            "^\\d{1,2}\\s[a-z]{3}\\s\\d{4}$" to "dd MMM yyyy",
+            "^\\d{1,2}\\s[a-z]{4,}\\s\\d{4}$" to "dd MMMM yyyy",
+            "^\\d{12}$" to "yyyyMMddHHmm",
+            "^\\d{8}\\s\\d{4}$" to "yyyyMMdd HHmm",
+            "^\\d{1,2}-\\d{1,2}-\\d{4}\\s\\d{1,2}:\\d{2}$" to "dd-MM-yyyy HH:mm",
+            "^\\d{4}-\\d{1,2}-\\d{1,2}\\s\\d{1,2}:\\d{2}$" to "yyyy-MM-dd HH:mm",
+            "^\\d{1,2}/\\d{1,2}/\\d{4}\\s\\d{1,2}:\\d{2}$" to "MM/dd/yyyy HH:mm",
+            "^\\d{4}/\\d{1,2}/\\d{1,2}\\s\\d{1,2}:\\d{2}$" to "yyyy/MM/dd HH:mm",
+            "^\\d{1,2}\\s[a-z]{3}\\s\\d{4}\\s\\d{1,2}:\\d{2}$" to "dd MMM yyyy HH:mm",
+            "^\\d{1,2}\\s[a-z]{4,}\\s\\d{4}\\s\\d{1,2}:\\d{2}$" to "dd MMMM yyyy HH:mm",
+            "^\\d{14}$" to "yyyyMMddHHmmss",
+            "^\\d{8}\\s\\d{6}$" to "yyyyMMdd HHmmss",
+            "^\\d{1,2}-\\d{1,2}-\\d{4}\\s\\d{1,2}:\\d{2}:\\d{2}$" to "dd-MM-yyyy HH:mm:ss",
+            "^\\d{4}-\\d{1,2}-\\d{1,2}\\s\\d{1,2}:\\d{2}:\\d{2}$" to "yyyy-MM-dd HH:mm:ss",
+            "^\\d{1,2}/\\d{1,2}/\\d{4}\\s\\d{1,2}:\\d{2}:\\d{2}$" to "MM/dd/yyyy HH:mm:ss",
+            "^\\d{4}/\\d{1,2}/\\d{1,2}\\s\\d{1,2}:\\d{2}:\\d{2}$" to "yyyy/MM/dd HH:mm:ss",
+            "^\\d{1,2}\\s[a-z]{3}\\s\\d{4}\\s\\d{1,2}:\\d{2}:\\d{2}$" to "dd MMM yyyy HH:mm:ss",
+            "^\\d{1,2}\\s[a-z]{4,}\\s\\d{4}\\s\\d{1,2}:\\d{2}:\\d{2}$" to "dd MMMM yyyy HH:mm:ss"
+)
+
+/**
+ * Determine SimpleDateFormat pattern matching with the given date string. Returns null if
+ * format is unknown. You can simply extend DateUtil with more formats if needed.
+ * @param dateString The date string to determine the SimpleDateFormat pattern for.
+ * @return The matching SimpleDateFormat pattern, or null if format is unknown.
+ * @see SimpleDateFormat
+ */
+fun determineDateFormat(dateString: String): String? {
+    for (regexp in DATE_FORMAT_REGEXPS.keys) {
+        if (dateString.toLowerCase().matches(Regex(regexp))) {
+            return DATE_FORMAT_REGEXPS[regexp]
+        }
+    }
+    return null // Unknown format.
+}
+
+fun parseAnyDate(dateString: String): Date? {
+    val format = determineDateFormat(dateString) ?: return null
+    return SimpleDateFormat(format).parse(dateString)
+}
