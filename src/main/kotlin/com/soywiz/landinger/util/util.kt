@@ -12,7 +12,7 @@ fun getAbsoluteUrl(uri: String, call: ApplicationCall): String =
     if (uri.startsWith("http://") || uri.startsWith("https://")) {
         uri
     } else {
-        "${call.request.origin.schemePlusHost.trimEnd('/')}/${uri.trimStart('/')}"
+        "${call.request.origin.schemePlusHost.trimEnd('/')}/${uri.trimStart('/')}".trimEnd('/')
     }
 
 fun File.takeIfExists() = takeIf { it.exists() }

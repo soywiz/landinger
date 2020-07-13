@@ -12,6 +12,7 @@ import com.soywiz.landinger.util.*
 import io.ktor.application.ApplicationCall
 import io.ktor.application.call
 import io.ktor.application.install
+import io.ktor.client.features.RedirectResponseException
 import io.ktor.features.*
 import io.ktor.http.CacheControl
 import io.ktor.http.ContentType
@@ -20,6 +21,7 @@ import io.ktor.http.content.CachingOptions
 import io.ktor.request.host
 import io.ktor.request.uri
 import io.ktor.response.respondFile
+import io.ktor.response.respondRedirect
 import io.ktor.response.respondText
 import io.ktor.routing.get
 import io.ktor.routing.route
@@ -94,6 +96,9 @@ fun serve(config: Config) {
                             call.respondText("Not Found", ContentType.Text.Html, HttpStatusCode.NotFound)
                         }
                     }
+                    exception<HttpRedirectException> { cause ->
+                        call.respondRedirect(cause.url, cause.permanent)
+                    }
                 }
                 route("/") {
                     get("/") {
@@ -155,6 +160,8 @@ fun FileWithFrontMatter.toTemplateContent(): TemplateContent {
     return TemplateContent(this.createFullTextWithBody(finalResult))
 }
 */
+
+class HttpRedirectException(val url: String, val permanent: Boolean) : Throwable()
 
 @Singleton
 class LandingServing(
@@ -252,9 +259,10 @@ class LandingServing(
             }
         ),
         extraFunctions = listOf(
-            TeFunction("error") {
-                throw NotFoundException()
-            },
+            TeFunction("error") { throw NotFoundException() },
+            TeFunction("not_found") { throw NotFoundException() },
+            TeFunction("permanent_redirect") { throw HttpRedirectException(it[0].toString(), permanent = true) },
+            TeFunction("temporal_redirect") { throw HttpRedirectException(it[0].toString(), permanent = false) },
             TeFunction("now") {
                 Date()
             },
@@ -348,6 +356,10 @@ class LandingServing(
     }
 
     suspend fun servePost(pipeline: PipelineContext<Unit, ApplicationCall>, permalink: String) = pipeline.apply {
+        if (permalink.endsWith("/")) {
+            call.respondRedirect(permanent = true, url = "/" + permalink.canonicalPermalink())
+            return@apply
+        }
         val permalink = permalink.canonicalPermalink()
         val entry = templateProvider.newGet(permalink)
         if (entry != null) {
