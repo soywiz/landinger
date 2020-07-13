@@ -169,7 +169,7 @@ fun serve(config: Config) {
                                 arrayOf("git", "reset", *gitExtraArgs, "--hard", "origin/master"),
                                 gitExtraEnvs,
                                 folders.content
-                            )
+                            ).toString()
                         } else {
                             "-"
                         }
