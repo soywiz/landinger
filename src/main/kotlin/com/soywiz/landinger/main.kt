@@ -1,10 +1,13 @@
 package com.soywiz.landinger
 
 import com.soywiz.kds.linkedHashMapOf
+import com.soywiz.korio.async.AsyncThread
 import com.soywiz.korio.file.std.get
 import com.soywiz.korio.lang.substr
 import com.soywiz.korte.*
+import com.soywiz.landinger.modules.MyKeyPair
 import com.soywiz.landinger.modules.MyLuceneIndex
+import com.soywiz.landinger.modules.generateSshRsaKeyPairToFile
 import com.soywiz.landinger.util.*
 import io.ktor.application.ApplicationCall
 import io.ktor.application.call
@@ -24,8 +27,15 @@ import io.ktor.routing.routing
 import io.ktor.server.engine.embeddedServer
 import io.ktor.server.netty.Netty
 import io.ktor.util.pipeline.PipelineContext
+import jdk.nashorn.internal.objects.NativeRegExp.exec
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withContext
 import java.io.File
+import java.security.KeyPair
+import java.security.KeyPairGenerator
+import java.security.SecureRandom
 import java.text.DateFormat
 import java.util.*
 import kotlin.collections.LinkedHashMap
@@ -87,6 +97,7 @@ fun serve(config: Config) {
         val entries = Entries(folders, indexService)
         val myLuceneIndex = MyLuceneIndex(entries)
         val landing = LandingServing(folders, entries)
+        val gitAsyncThread = AsyncThread()
 
         routing {
             install(StatusPages) {
@@ -135,6 +146,31 @@ fun serve(config: Config) {
                 //    call.sessions.clear<UserSession>()
                 //    call.respondRedirect(call.sessions.get<LastVisitedPageSession>()?.page ?: "/")
                 //}
+                get("/__git__") {
+                    gitAsyncThread {
+                        val gitFolder = folders.content[".gitssh"]
+                        val rsaKeyFile = gitFolder["rsakey"]
+                        val rsaKeyPubFile = gitFolder["rsakey.pub"]
+                        if (!rsaKeyFile.exists()) {
+                            //generateSshRsaKeyPairToFile(rsaKeyFile)
+                            TODO()
+                        }
+
+                        val gitExtraArgs = arrayOf<String>(
+                            //"-c", "core.sshCommand=/usr/bin/ssh -i $rsaKeyFile"
+                        )
+                        val gitExtraEnvs = arrayOf<String>(
+                            "GIT_SSH_COMMAND=ssh -o IdentitiesOnly=yes -i $rsaKeyFile"
+                        )
+
+                        val text = withContext(Dispatchers.IO) { rsaKeyPubFile.readText() }
+                        //val out1 = ""
+                        //val out2 = ""
+                        val out1 = exec(arrayOf("git", "fetch", *gitExtraArgs, "--all"), gitExtraEnvs, folders.content)
+                        val out2 = exec(arrayOf("git", "reset", *gitExtraArgs, "--hard", "origin/master"), gitExtraEnvs, folders.content)
+                        call.respondText(text + "\n$out1\n$out2", ContentType.Text.Plain)
+                    }
+                }
                 get("/") {
                     landing.servePost(this, "")
                 }
@@ -145,6 +181,7 @@ fun serve(config: Config) {
         }
     }.start(wait = true)
 }
+
 
 class Folders(content: File) {
     val content = content.canonicalFile
@@ -377,3 +414,4 @@ class LandingServing(val folders: Folders, val entries: Entries) {
         }
     }
 }
+
