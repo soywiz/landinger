@@ -146,33 +146,40 @@ fun serve(config: Config) {
                 //}
                 get("/__git__") {
                     gitAsyncThread {
-                        val gitFolder = folders.content[".gitssh"]
-                        val rsaKeyFile = gitFolder["rsakey"]
-                        val rsaKeyPubFile = gitFolder["rsakey.pub"]
-
                         val output = StringBuilder()
+                        try {
+                            val gitFolder = folders.content[".gitssh"]
+                            val rsaKeyFile = gitFolder["rsakey"]
+                            val rsaKeyPubFile = gitFolder["rsakey.pub"]
 
-                        if (!rsaKeyFile.exists()) {
-                            output.append(generateSshRsaKeyPairToFile(rsaKeyFile))
+                            if (!rsaKeyFile.exists()) {
+                                output.append(generateSshRsaKeyPairToFile(rsaKeyFile))
+                            }
+
+                            val gitExtraArgs = arrayOf<String>(
+                                //"-c", "core.sshCommand=/usr/bin/ssh -i $rsaKeyFile"
+                            )
+                            val gitExtraEnvs = arrayOf<String>(
+                                "GIT_SSH_COMMAND=ssh -o IdentitiesOnly=yes -i $rsaKeyFile"
+                            )
+
+                            output.append(withContext(Dispatchers.IO) { rsaKeyPubFile.readText() })
+                            val gitFetch =
+                                exec(arrayOf("git", "fetch", *gitExtraArgs, "--all"), gitExtraEnvs, folders.content)
+                            output.append(gitFetch)
+                            if (gitFetch.success) {
+                                output.append(
+                                    exec(
+                                        arrayOf("git", "reset", *gitExtraArgs, "--hard", "origin/master"),
+                                        gitExtraEnvs,
+                                        folders.content
+                                    )
+                                )
+                            }
+                        } catch (e: Throwable) {
+                            output.append(e.toString())
                         }
-
-                        val gitExtraArgs = arrayOf<String>(
-                            //"-c", "core.sshCommand=/usr/bin/ssh -i $rsaKeyFile"
-                        )
-                        val gitExtraEnvs = arrayOf<String>(
-                            "GIT_SSH_COMMAND=ssh -o IdentitiesOnly=yes -i $rsaKeyFile"
-                        )
-
-                        val text = withContext(Dispatchers.IO) { rsaKeyPubFile.readText() }
-                        val gitFetch = output.append(exec(arrayOf("git", "fetch", *gitExtraArgs, "--all"), gitExtraEnvs, folders.content))
-                        if (gitFetch.success) {
-                            output.append(exec(
-                                arrayOf("git", "reset", *gitExtraArgs, "--hard", "origin/master"),
-                                gitExtraEnvs,
-                                folders.content
-                            ))
-                        }
-                        call.respondText("$text$output", ContentType.Text.Plain)
+                        call.respondText("$output", ContentType.Text.Plain)
                     }
                 }
                 get("/") {
