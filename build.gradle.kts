@@ -92,7 +92,10 @@ tasks {
 
     val jarFile = fatJar.outputs.files.first()
     val server = "soywiz2"
+    val domain = "programar.ovh"
     val baseDir = "/home/virtual/seo/programar.ovh"
+    //val domain = "soywiz.com"
+    //val baseDir = "/home/virtual/soywiz/soywiz.com"
     val baseOut = "$server:$baseDir"
     val contentDir = File(projectDir, "content")
 
@@ -101,7 +104,7 @@ tasks {
             exec { commandLine("scp", file("Dockerfile"), "$baseOut/Dockerfile") }
             exec { commandLine("scp", file("docker-compose.yml"), "$baseOut/docker-compose.yml") }
             File(".env").writeText(
-                "VIRTUAL_HOST=programar.ovh\n" +
+                "VIRTUAL_HOST=$domain\n" +
                 "VIRTUAL_PORT=8080\n"
             )
             exec { commandLine("scp", file(".env"), "$baseOut/.env") }
