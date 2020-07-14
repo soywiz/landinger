@@ -3,19 +3,14 @@ package com.soywiz.landinger.modules
 import com.soywiz.klock.DateTime
 import com.soywiz.korinject.AsyncInjector
 import com.soywiz.korio.util.encoding.unhexIgnoreSpaces
-import com.soywiz.korte.dynamic.Dynamic2Callable
-import com.soywiz.landinger.Folders
-import com.soywiz.landinger.util.getAbsoluteUrl
 import io.ktor.application.Application
 import io.ktor.application.call
 import io.ktor.application.install
 import io.ktor.request.uri
 import io.ktor.response.respondRedirect
-import io.ktor.routing.Route
 import io.ktor.routing.get
 import io.ktor.routing.routing
 import io.ktor.sessions.*
-import kotlin.reflect.KFunction
 
 private val ConfigService.GH_CLIENT_ID get() = getSecretOrEnvString("GH_CLIENT_ID")
 private val ConfigService.GH_CLIENT_SECRET get() = getSecretOrEnvString("GH_CLIENT_SECRET")
@@ -72,8 +67,8 @@ suspend fun Application.installLogin(injector: AsyncInjector) {
             val accessToken = oauthGetAccessToken(code, GH_CLIENT_ID, GH_CLIENT_SECRET)
             val login = getUserLogin(accessToken)
             sponsorInfoCache.remove(login)
-            getCachedSponsor(login)
-            call.sessions.set(UserSession(login))
+            val sponsorInfo = getCachedSponsor(login)
+            call.sessions.set(UserSession(login, sponsorInfo.price, "github"))
             call.respondRedirect(call.sessions.get<LastVisitedPageSession>()?.page ?: "/")
         }
         get("/logout") {
@@ -88,11 +83,12 @@ suspend fun Application.installLogin(injector: AsyncInjector) {
                 null
             }
             val logged = ((userSession?.login) != null)
-            val login = userSession?.login
             it.logged = logged
             it.extraConfig["session"] = mapOf(
                 "logged" to logged,
-                "login" to login
+                "login" to userSession?.login,
+                "price" to userSession?.price,
+                "platform" to userSession?.platform
             )
             //println("pageShown: $logged : $login")
             it.call.sessions.set(LastVisitedPageSession(it.call.request.uri))
@@ -100,5 +96,5 @@ suspend fun Application.installLogin(injector: AsyncInjector) {
     }
 }
 
-data class UserSession(val login: String)
+data class UserSession(val login: String, val price: Int, val platform :String)
 data class LastVisitedPageSession(val page: String)
