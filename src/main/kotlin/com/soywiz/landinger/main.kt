@@ -2,13 +2,16 @@ package com.soywiz.landinger
 
 import com.soywiz.klock.DateFormat
 import com.soywiz.klock.DateTime
+import com.soywiz.klock.format
 import com.soywiz.klock.jvm.toDate
+import com.soywiz.klock.jvm.toDateTime
 import com.soywiz.korinject.AsyncInjector
 import com.soywiz.korinject.Singleton
 import com.soywiz.korinject.jvmAutomapping
 import com.soywiz.korio.file.std.get
 import com.soywiz.korio.lang.substr
 import com.soywiz.korte.*
+import com.soywiz.korte.dynamic.Mapper2
 import com.soywiz.landinger.modules.*
 import com.soywiz.landinger.util.*
 import io.ktor.application.ApplicationCall
@@ -31,6 +34,8 @@ import io.ktor.server.engine.embeddedServer
 import io.ktor.server.netty.Netty
 import io.ktor.util.pipeline.PipelineContext
 import kotlinx.coroutines.runBlocking
+import org.jsoup.Jsoup
+import org.jsoup.safety.Whitelist
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.*
@@ -218,6 +223,8 @@ class LandingServing(
         return runBlocking { getAbsoluteUrl(url, scope.get("_call") as ApplicationCall) }
     }
 
+    private val templateConfig2: TemplateConfig get() = templateConfig
+
     val templateConfig = TemplateConfig(
         extraTags = listOf(
             Tag("import_css", setOf(), null) {
@@ -240,24 +247,52 @@ class LandingServing(
             Filter("absolute") { getAbsoluteUrl(subject.toString(), context.scope.get("_call") as ApplicationCall) },
             Filter("absolute_url") { getAbsoluteUrl(subject.toString(), context.scope.get("_call") as ApplicationCall) },
             Filter("excerpt") {
-                subject.toString().substr(0, 200)
+                Jsoup.clean(subject.toString().substr(0, 200), Whitelist.relaxed())
+            },
+            Filter("eval_template") {
+                //fun Template.Scope.root(): Template.Scope = this?.parent?.root() ?: this
+                val subject: Any = this.subject ?: ""
+                val str = when (subject) {
+                    is RawString -> subject.str
+                    else -> subject.toString()
+                }
+                try {
+                    Template(str, this.context.config)(this.context.scope.map, this.context.mapper)
+                } catch (e: Throwable) {
+                    e.printStackTrace()
+                    //System.err.println(str)
+                    //"--ERROR-- : ${subject::class} : $str"
+                    "--ERROR--"
+                }
+            },
+            Filter("markdown_to_html") {
+                subject.toString().kramdownToHtml()
             },
             Filter("date_format") {
                 val subject = this.subject
+                val date = when (subject) {
+                    is Date -> subject
+                    is DateTime -> subject.toDate()
+                    else -> parseAnyDate(subject.toString())
+                }
                 //when (subject) {
                 //    is Date -> subject
                 //}
                 if (args.isEmpty()) {
                     subject.toString()
                 } else {
-                    val date = when (subject) {
-                        is Date -> subject
-                        is DateTime -> subject.toDate()
-                        else -> parseAnyDate(subject.toString())
-                    }
                     SimpleDateFormat(args[0].toDynamicString()).format(date ?: Date(0L))
                 }
 
+            },
+            Filter("date_rfc3339") {
+                val subject = this.subject
+                val date: DateTime = when (subject) {
+                    is Date -> subject.toDateTime()
+                    is DateTime -> subject
+                    else -> parseAnyDate(subject.toString())?.toDateTime() ?: DateTime.EPOCH
+                }
+                DateFormat.FORMAT1.format(date)
             },
             Filter("date_to_string") {
                 val subject = this.subject
@@ -382,7 +417,7 @@ class LandingServing(
     }
 
     suspend fun servePost(pipeline: PipelineContext<Unit, ApplicationCall>, permalink: String) = pipeline.apply {
-        if (permalink.endsWith("/")) {
+        if (permalink != "" && permalink.endsWith("/")) {
             throw HttpRedirectException(permalink.canonicalPermalink().absoluteUrl(call), permanent = true)
         }
         val permalink = permalink.canonicalPermalink()

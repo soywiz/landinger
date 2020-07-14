@@ -8,11 +8,11 @@ import java.io.IOException
 
 fun String.absoluteUrl(call: ApplicationCall): String = getAbsoluteUrl(this, call)
 
-fun getAbsoluteUrl(uri: String, call: ApplicationCall): String =
+fun getAbsoluteUrl(uri: String, call: ApplicationCall?): String =
     if (uri.startsWith("http://") || uri.startsWith("https://")) {
         uri
     } else {
-        "${call.request.origin.schemePlusHost.trimEnd('/')}/${uri.trimStart('/')}".trimEnd('/')
+        "${(call?.request?.origin?.schemePlusHost ?: "https://localhost").trimEnd('/')}/${uri.trimStart('/')}".trimEnd('/')
     }
 
 fun File.takeIfExists() = takeIf { it.exists() }

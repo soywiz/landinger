@@ -127,9 +127,14 @@ data class FileWithFrontMatter(val file: File) {
     }
     val headerRaw by lazy { parts[0] }
     val bodyRaw by lazy { parts[1] ?: "" }
-    val bodyHtml by lazy { if (isMarkDown) bodyRaw.kramdownToHtml() else bodyRaw }
-    val fileContentHtml by lazy {  createFullTextWithBody(bodyHtml)}
+    val bodyHtml by lazy { bodyRaw.toHtml() }
+    val fileContentHtml by lazy { createFullTextWithBody(bodyHtml)}
     val header: Map<String, Any?> by lazy { if (headerRaw != null) yaml.load<Map<String, Any?>>(headerRaw) else mapOf<String, Any?>() }
+
+    private fun String.toHtml() = if (isMarkDown) kramdownToHtml() else this
+
+    val bodyRawFree by lazy { bodyRaw.forSponsor(false) }
+    val bodyRawSponsor by lazy { bodyRaw.forSponsor(true) }
 
     fun createFullTextWithBody(body: String): String {
         val headerRaw = headerRaw
@@ -169,6 +174,8 @@ data class Entry(
             "permalink" -> permalink
             "url" -> permalink
             "body" -> bodyHtml
+            "bodyRawFree" -> mfile.bodyRawFree
+            "bodyRawSponsor" -> mfile.bodyRawSponsor
             "sponsored" -> sponsored
             else -> headers[keyStr]
         }
@@ -200,6 +207,17 @@ data class Entry(
     val rawFileContent get() = mfile.rawFileContent
     val htmlWithHeader get() = mfile.fileContentHtml
 }
+
+
+fun String.forSponsor(sponsor: Boolean): String {
+    return this.replace(Regex("\\$((?:NO)?SPONSOR)\\$:(.*?):\\$\\$", RegexOption.DOT_MATCHES_ALL)) {
+        val kind = it.groupValues[1]
+        val content = it.groupValues[2]
+        val kindSponsor = kind == "SPONSOR"
+        if (sponsor == kindSponsor) content else ""
+    }
+}
+
 
 @Singleton
 class Entries(val folders: Folders, val indexService: IndexService) {
