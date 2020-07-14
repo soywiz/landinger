@@ -40,7 +40,7 @@ suspend fun graphqlCall(access_token: String, query: String): Map<String, Any?> 
         header("Authorization", "bearer $access_token")
         body = TextContent(jsonMapper.writeValueAsString(mapOf("query" to query)), contentType = ContentType.Any)
     }
-    println("result: $result")
+    //println("result: $result")
     return jsonMapper.readValue<Map<String, Any?>>(result)
 }
 
@@ -109,7 +109,8 @@ suspend fun getSponsorInfo(login: String, access_token: String): SponsorInfo {
     }
     return SponsorInfo(
         login,
-        if (login == "soywiz") +1 else sponsorPrice,
+        sponsorPrice,
+        //if (login == "soywiz") +1 else sponsorPrice,
         DateTime.now()
     )
 }

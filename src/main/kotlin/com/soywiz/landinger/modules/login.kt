@@ -3,6 +3,7 @@ package com.soywiz.landinger.modules
 import com.soywiz.klock.DateTime
 import com.soywiz.korinject.AsyncInjector
 import com.soywiz.korio.util.encoding.unhexIgnoreSpaces
+import com.soywiz.korte.dynamic.Dynamic2
 import io.ktor.application.Application
 import io.ktor.application.call
 import io.ktor.application.install
@@ -83,12 +84,24 @@ suspend fun Application.installLogin(injector: AsyncInjector) {
                 null
             }
             val logged = ((userSession?.login) != null)
+            val login = userSession?.login ?: ""
+            val price = userSession?.price ?: 0
+            val platform = userSession?.platform ?: ""
+            val SPONSOR_GITHUB_USERS = config.secrets["SPONSOR_GITHUB_USERS"]
+            val extraSponsored = if (SPONSOR_GITHUB_USERS is Iterable<*>) {
+                login in SPONSOR_GITHUB_USERS
+            } else {
+                false
+            }
+            it.isSponsor = logged && (price > 0 || extraSponsored)
             it.logged = logged
+            //println("Info: $logged: $price, $extraSponsored, logged=$logged, sponsor=${it.isSponsor}")
             it.extraConfig["session"] = mapOf(
                 "logged" to logged,
-                "login" to userSession?.login,
-                "price" to userSession?.price,
-                "platform" to userSession?.platform
+                "isSponsor" to it.isSponsor,
+                "login" to login,
+                "price" to price,
+                "platform" to platform
             )
             //println("pageShown: $logged : $login")
             it.call.sessions.set(LastVisitedPageSession(it.call.request.uri))

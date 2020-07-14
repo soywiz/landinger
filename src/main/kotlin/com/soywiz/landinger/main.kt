@@ -402,13 +402,7 @@ class LandingServing(
         ) + configService.extraConfig + page.extraConfig
         //println("configService.extraConfig: ${configService.extraConfig} : $configService")
         val text = templates.render(permalink, tplParams)
-        val finalText = text
-            .replace(Regex("\\$((?:NO)?SPONSOR)\\$:(.*?):\\$\\$", RegexOption.DOT_MATCHES_ALL)) {
-                val kind = it.groupValues[1]
-                val content = it.groupValues[2]
-                val kindSponsor = kind == "SPONSOR"
-                if (page.logged == kindSponsor) content else ""
-            }
+        val finalText = text.forSponsor(page.isSponsor)
 
         call.respondText(finalText, when {
             entry?.isXml == true -> ContentType.Text.Xml

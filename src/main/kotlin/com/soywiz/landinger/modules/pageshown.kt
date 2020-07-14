@@ -12,6 +12,7 @@ class PageShownBus {
     //data class Page(val context: PipelineContext<Unit, ApplicationCall>, val entry: Entry?)
     data class Page(val call: ApplicationCall, val entry: Entry?, val permalink: String) {
         var logged = false
+        var isSponsor = false
         val extraConfig = LinkedHashMap<String, Any?>()
     }
 }

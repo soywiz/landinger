@@ -92,10 +92,10 @@ tasks {
 
     val jarFile = fatJar.outputs.files.first()
     val server = "soywiz2"
-    val domain = "programar.ovh"
-    val baseDir = "/home/virtual/seo/programar.ovh"
-    //val domain = "soywiz.com"
-    //val baseDir = "/home/virtual/soywiz/soywiz.com"
+    //val domain = "programar.ovh"
+    //val baseDir = "/home/virtual/seo/programar.ovh"
+    val domain = "soywiz.com"
+    val baseDir = "/home/virtual/soywiz/soywiz.com"
     val baseOut = "$server:$baseDir"
     val contentDir = File(projectDir, "content")
 
