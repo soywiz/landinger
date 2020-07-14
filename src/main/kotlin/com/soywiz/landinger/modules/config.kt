@@ -17,6 +17,9 @@ class ConfigService(val folders: Folders) {
     @Volatile
     var config: Map<String, Any?> = mapOf()
 
+    @Volatile
+    var secrets: Map<String, Any?> = mapOf()
+
     val extraConfig = LinkedHashMap<String, Any?>()
 
     @Volatile
@@ -24,6 +27,7 @@ class ConfigService(val folders: Folders) {
 
     fun reloadConfig() {
         config = yaml.load<Map<String, Any?>>((folders.configYml.takeIfExists()?.readText() ?: "").reader())
+        secrets = yaml.load<Map<String, Any?>>((folders.secretsYml.takeIfExists()?.readText() ?: "").reader())
         this.siteData = linkedHashMapOf<String, Any?>().also { siteData ->
             for (file in folders.data.walkTopDown()) {
                 if (file.extension == "yml") {
@@ -33,5 +37,6 @@ class ConfigService(val folders: Folders) {
         }
     }
 
-    fun getConfigOrEnvString(key: String): String? = System.getenv(key) ?: config["env"]?.toString()
+    fun getConfigOrEnvString(key: String): String? = System.getenv(key) ?: config[key]?.toString()
+    fun getSecretOrEnvString(key: String): String? = System.getenv(key) ?: secrets[key]?.toString()
 }

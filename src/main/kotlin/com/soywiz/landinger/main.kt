@@ -104,7 +104,7 @@ fun serve(config: Config) {
                     }
                     exception<Throwable> { cause ->
                         cause.printStackTrace()
-                        println(cause.toString())
+                        System.err.println(cause.toString())
                         call.respondText("Internal Server Error", ContentType.Text.Plain, HttpStatusCode.InternalServerError)
                     }
                 }
@@ -132,6 +132,7 @@ class Folders(content: File) {
     val collections = content["collections"]
     val static = content["static"]
     val configYml = content["config.yml"]
+    val secretsYml = content["secrets.yml"]
 }
 
 fun FileWithFrontMatter.toTemplateContent(): TemplateContent {
@@ -352,7 +353,7 @@ class LandingServing(
         }
 
         val page = PageShownBus.Page(call, entry, permalink)
-        if (code.value >= HttpStatusCode.OK.value) {
+        if (code.value < 400) {
             pageShownBus.pageShown(page)
         }
 
@@ -363,7 +364,7 @@ class LandingServing(
             "params" to params,
             "page" to entry,
             "exception" to exception
-        ) + configService.extraConfig
+        ) + configService.extraConfig + page.extraConfig
         //println("configService.extraConfig: ${configService.extraConfig} : $configService")
         val text = templates.render(permalink, tplParams)
         val finalText = text
@@ -382,8 +383,7 @@ class LandingServing(
 
     suspend fun servePost(pipeline: PipelineContext<Unit, ApplicationCall>, permalink: String) = pipeline.apply {
         if (permalink.endsWith("/")) {
-            call.respondRedirect(permanent = true, url = "/" + permalink.canonicalPermalink())
-            return@apply
+            throw HttpRedirectException(permalink.canonicalPermalink().absoluteUrl(call), permanent = true)
         }
         val permalink = permalink.canonicalPermalink()
         val entry = templateProvider.newGet(permalink)

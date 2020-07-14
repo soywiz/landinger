@@ -5,6 +5,7 @@ import com.soywiz.korinject.AsyncInjector
 import com.soywiz.korio.util.encoding.unhexIgnoreSpaces
 import com.soywiz.korte.dynamic.Dynamic2Callable
 import com.soywiz.landinger.Folders
+import com.soywiz.landinger.util.getAbsoluteUrl
 import io.ktor.application.Application
 import io.ktor.application.call
 import io.ktor.application.install
@@ -16,11 +17,11 @@ import io.ktor.routing.routing
 import io.ktor.sessions.*
 import kotlin.reflect.KFunction
 
-private val ConfigService.GH_CLIENT_ID get() = getConfigOrEnvString("GH_CLIENT_ID")
-private val ConfigService.GH_CLIENT_SECRET get() = getConfigOrEnvString("GH_CLIENT_SECRET")
-private val ConfigService.GH_SPONSOR_TOKEN get() = getConfigOrEnvString("GH_SPONSOR_TOKEN")
-private val ConfigService.SECRET_SESSION_ENCRYPT_KEY get() = getConfigOrEnvString("SECRET_SESSION_ENCRYPT_KEY")?.unhexIgnoreSpaces
-private val ConfigService.SECRET_SESSION_AUTH_KEY get() = getConfigOrEnvString("SECRET_SESSION_AUTH_KEY")?.unhexIgnoreSpaces
+private val ConfigService.GH_CLIENT_ID get() = getSecretOrEnvString("GH_CLIENT_ID")
+private val ConfigService.GH_CLIENT_SECRET get() = getSecretOrEnvString("GH_CLIENT_SECRET")
+private val ConfigService.GH_SPONSOR_TOKEN get() = getSecretOrEnvString("GH_SPONSOR_TOKEN")
+private val ConfigService.SECRET_SESSION_ENCRYPT_KEY get() = getSecretOrEnvString("SECRET_SESSION_ENCRYPT_KEY")?.unhexIgnoreSpaces
+private val ConfigService.SECRET_SESSION_AUTH_KEY get() = getSecretOrEnvString("SECRET_SESSION_AUTH_KEY")?.unhexIgnoreSpaces
 
 suspend fun Application.installLogin(injector: AsyncInjector) {
     val config = injector.get<ConfigService>()
@@ -49,7 +50,7 @@ suspend fun Application.installLogin(injector: AsyncInjector) {
 
     config.extraConfig["LOGIN_URL"] = object {
         @Suppress("unused")
-        val github: String get() = "https://github.com/login/oauth/authorize?client_id=${config.GH_CLIENT_ID}&scope=read:user"
+        val github: String get() = "https://github.com/login/oauth/authorize?client_id=${config.GH_CLIENT_ID}&scope=read:user&redirect_uri=https://soywiz.com/login/oauth/authorize"
     }
 
     install(Sessions) {
@@ -63,6 +64,7 @@ suspend fun Application.installLogin(injector: AsyncInjector) {
         }
     }
     routing {
+        println("!! Configured sessions")
         get("/login/oauth/authorize") {
             val code = call.request.queryParameters["code"] ?: error("Missing code")
             val GH_CLIENT_ID = config.GH_CLIENT_ID ?: error("No github configured")
@@ -75,6 +77,7 @@ suspend fun Application.installLogin(injector: AsyncInjector) {
             call.respondRedirect(call.sessions.get<LastVisitedPageSession>()?.page ?: "/")
         }
         get("/logout") {
+            //println("logout")
             call.sessions.clear<UserSession>()
             call.respondRedirect(call.sessions.get<LastVisitedPageSession>()?.page ?: "/")
         }
@@ -84,11 +87,14 @@ suspend fun Application.installLogin(injector: AsyncInjector) {
             } catch (e: IllegalStateException) {
                 null
             }
-            it.logged = true
+            val logged = ((userSession?.login) != null)
+            val login = userSession?.login
+            it.logged = logged
             it.extraConfig["session"] = mapOf(
-                "logged" to ((userSession?.login) != null),
-                "login" to userSession?.login
+                "logged" to logged,
+                "login" to login
             )
+            //println("pageShown: $logged : $login")
             it.call.sessions.set(LastVisitedPageSession(it.call.request.uri))
         }
     }

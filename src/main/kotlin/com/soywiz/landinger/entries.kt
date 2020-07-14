@@ -158,7 +158,7 @@ data class Entry(
         check(permalink == permalink.canonicalPermalink())
     }
 
-    val sponsored by lazy { rawFileContent.contains("<!--SPONSOR-->") || rawFileContent.contains("\$\$SPONSOR\$:") }
+    val sponsored by lazy { rawFileContent.contains("\$SPONSOR\$:") }
 
     override suspend fun dynamic2Get(key: Any?): Any? {
         val keyStr = key.toString()
@@ -167,6 +167,7 @@ data class Entry(
             "date" -> date
             "icon" -> icon
             "permalink" -> permalink
+            "url" -> permalink
             "body" -> bodyHtml
             "sponsored" -> sponsored
             else -> headers[keyStr]
