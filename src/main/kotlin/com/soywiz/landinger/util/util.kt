@@ -15,7 +15,7 @@ fun getAbsoluteUrl(uri: String, call: ApplicationCall?): String =
         "${(call?.request?.origin?.schemePlusHost ?: "https://localhost").trimEnd('/')}/${uri.trimStart('/')}".trimEnd('/')
     }
 
-fun File.takeIfExists() = takeIf { it.exists() }
+fun File.takeIfExists(): File? = takeIf { it.exists() }
 
 fun File.child(path: String): File? {
     val folder = this

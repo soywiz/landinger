@@ -26,8 +26,8 @@ class ConfigService(val folders: Folders) {
     var siteData: Map<String, Any?> = mapOf()
 
     fun reloadConfig() {
-        config = yaml.load<Map<String, Any?>>((folders.configYml.takeIfExists()?.readText() ?: "").reader())
-        secrets = yaml.load<Map<String, Any?>>((folders.secretsYml.takeIfExists()?.readText() ?: "").reader())
+        config = yaml.load<Map<String, Any?>?>((folders.configYml.takeIfExists()?.readText() ?: "").reader()) ?: mapOf()
+        secrets = yaml.load<Map<String, Any?>?>((folders.secretsYml.takeIfExists()?.readText() ?: "").reader()) ?: mapOf()
         this.siteData = linkedHashMapOf<String, Any?>().also { siteData ->
             for (file in folders.data.walkTopDown()) {
                 if (file.extension == "yml") {
