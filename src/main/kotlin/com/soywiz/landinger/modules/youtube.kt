@@ -52,6 +52,8 @@ class YoutubeService(private val cache: Cache, private val config: ConfigService
         if (apiKey.isNullOrEmpty()) error("API Key not provided")
         val uncachedIds = ids.filter { !cache.has(getInfoKey(it)) }
 
+        //println("uncachedIds: $uncachedIds")
+
         if (uncachedIds.isNotEmpty()) {
             val url = "https://www.googleapis.com/youtube/v3/videos?" + QueryString.encode(
                 mapOf(
@@ -61,6 +63,7 @@ class YoutubeService(private val cache: Cache, private val config: ConfigService
                 )
             )
 
+            //println("request=$url")
             val urlHash = url.toByteArray(UTF8).sha1().hex
             val result = cache.get("youtube.request.$urlHash") {
                 httpRequestGetString(URL(url))
@@ -93,7 +96,7 @@ class YoutubeService(private val cache: Cache, private val config: ConfigService
         }
         //https://www.googleapis.com/youtube/v3/videos?part=contentDetails&part=snippet&id=mfJtWm5UddM&id=fCE7-ofMVbM&key=[YOUR_API_KEY]
         // -header 'Accept: application/json' \
-        return ids.map { cache.getOrNull<YoutubeInfo>(getInfoKey(it))!! }
+        return ids.map { cache.getOrNull<YoutubeInfo>(getInfoKey(it)) }.filterNotNull()
     }
 }
 

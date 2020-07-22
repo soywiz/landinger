@@ -336,8 +336,10 @@ class LandingServing(
                 entries.entries.entriesByCategory["posts"]?.map { it.date }?.max() ?: Date()
             },
             TeFunction("youtube_info") {
-                val list = youtube.getYoutubeVideoInfo(it[0].list.map { it.str })
-                if (it[0] is String) list[0] else list
+                val list = youtube.getYoutubeVideoInfo(it[0].list.map {
+                    if (it is Map<*, *>) it["id"].str else it.str
+                })
+                if (it[0] is String) list.getOrNull(0) else list
             }
             /*
             curl \
