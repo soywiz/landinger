@@ -249,7 +249,12 @@ class LandingServing(
                 args.map { it.toDynamicInt() }.joinToString(", ") { "$absPath ${it}w" }
             },
             Filter("absolute") { getAbsoluteUrl(subject.toString(), context.scope.get("_call") as ApplicationCall) },
-            Filter("absolute_url") { getAbsoluteUrl(subject.toString(), context.scope.get("_call") as ApplicationCall) },
+            Filter("absolute_url") {
+                getAbsoluteUrl(
+                    subject.toString(),
+                    context.scope.get("_call") as ApplicationCall
+                )
+            },
             Filter("excerpt") {
                 Jsoup.clean(subject.toString().substr(0, 200), Whitelist.relaxed())
             },
@@ -336,9 +341,12 @@ class LandingServing(
                 entries.entries.entriesByCategory["posts"]?.map { it.date }?.max() ?: Date()
             },
             TeFunction("youtube_info") {
-                val list = youtube.getYoutubeVideoInfo(it[0].list.map {
-                    if (it is Map<*, *>) it["id"].str else it.str
-                })
+                val ids = it[0].list.map {
+                    (if (it is Map<*, *>) it["id"].str else it.str).trim()
+                }
+                val list = youtube.getYoutubeVideoInfo(ids)
+                //println("youtube_ids: ${ids.joinToString(" || ")}")
+                //println(" --> ")
                 if (it[0] is String) list.getOrNull(0) else list
             }
             /*
