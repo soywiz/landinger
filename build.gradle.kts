@@ -15,10 +15,12 @@ repositories {
 
 val korteVersion: String by project
 val korinjectVersion: String by project
+val kryptoVersion: String by project
 
 dependencies {
     //val kotlinx_html_version = "0.7.1"
     val ktorVersion = "1.3.0"
+
 
     // include for server side
     //implementation("org.jetbrains.kotlinx:kotlinx-html-jvm:${kotlinx_html_version}")
@@ -44,6 +46,7 @@ dependencies {
     implementation("io.ktor:ktor-html-builder:$ktorVersion")
     //implementation('com.soywiz.korlibs.korio:korio-jvm:1.9.8')
     implementation("com.soywiz.korlibs.klock:klock-jvm:1.10.5")
+    implementation("com.soywiz.korlibs.krypto:krypto-jvm:$kryptoVersion")
 
     implementation("com.soywiz.korlibs.korte:korte-jvm:$korteVersion")
     implementation("com.soywiz.korlibs.korte:korte-korio-jvm:$korteVersion")
@@ -92,10 +95,10 @@ tasks {
 
     val jarFile = fatJar.outputs.files.first()
     val server = "soywiz2"
-    //val domain = "programar.ovh"
-    //val baseDir = "/home/virtual/seo/programar.ovh"
-    val domain = "soywiz.com"
-    val baseDir = "/home/virtual/soywiz/soywiz.com"
+    val domain = "programar.ovh"
+    val baseDir = "/home/virtual/seo/programar.ovh"
+    //val domain = "soywiz.com"
+    //val baseDir = "/home/virtual/soywiz/soywiz.com"
     val baseOut = "$server:$baseDir"
     val contentDir = File(projectDir, "content")
 

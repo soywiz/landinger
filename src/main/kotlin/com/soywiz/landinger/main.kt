@@ -13,6 +13,8 @@ import com.soywiz.korio.lang.substr
 import com.soywiz.korte.*
 import com.soywiz.korte.dynamic.Mapper2
 import com.soywiz.landinger.modules.*
+import com.soywiz.landinger.modules.Dynamic.list
+import com.soywiz.landinger.modules.Dynamic.str
 import com.soywiz.landinger.util.*
 import io.ktor.application.ApplicationCall
 import io.ktor.application.call
@@ -136,6 +138,7 @@ class Folders(content: File) {
     val posts = content["posts"]
     val collections = content["collections"]
     val static = content["static"]
+    val cache = content[".cache"]
     val configYml = content["config.yml"]
     val secretsYml = content["secrets.yml"]
 }
@@ -187,7 +190,8 @@ class LandingServing(
     val folders: Folders,
     val entries: Entries,
     val configService: ConfigService,
-    val pageShownBus: PageShownBus
+    val pageShownBus: PageShownBus,
+    val youtube: YoutubeService
 ) {
     val templateProvider = object : NewTemplateProvider {
         override suspend fun newGet(template: String): TemplateContent? {
@@ -330,7 +334,19 @@ class LandingServing(
             },
             TeFunction("last_post_update") {
                 entries.entries.entriesByCategory["posts"]?.map { it.date }?.max() ?: Date()
+            },
+            TeFunction("youtube_info") {
+                val list = youtube.getYoutubeVideoInfo(it[0].list.map { it.str })
+                if (it[0] is String) list[0] else list
             }
+            /*
+            curl \
+                'https://www.googleapis.com/youtube/v3/videos?part=contentDetails&part=snippet&id=mfJtWm5UddM&id=fCE7-ofMVbM&key=[YOUR_API_KEY]' \
+
+              --header 'Accept: application/json' \
+              --compressed
+
+             */
         ),
         contentTypeProcessor = { content, contentType ->
             when (contentType) {

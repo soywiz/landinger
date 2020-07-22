@@ -45,10 +45,18 @@ suspend fun graphqlCall(access_token: String, query: String): Map<String, Any?> 
 }
 
 object Dynamic {
-    operator fun <T> invoke(block: Dynamic.() -> T): T = block()
+    inline operator fun <T> invoke(block: Dynamic.() -> T): T = block()
 
-    operator fun Any?.get(key: String): Any? = when (this) {
-        is Map<*, *> -> (this as Map<String, Any?>)[key]
+    fun Any?.keys(): List<Any?> = when (this) {
+        is Map<*, *> -> this.keys.toList()
+        is Iterable<*> -> (0 until this.count()).toList()
+        else -> listOf()
+    }
+
+    fun Any?.entries(): List<Pair<Any?, Any?>> = keys().map { it to this[it] }
+
+    operator fun Any?.get(key: Any?): Any? = when (this) {
+        is Map<*, *> -> (this as Map<Any?, Any?>)[key]
         else -> null
     }
 
@@ -59,7 +67,8 @@ object Dynamic {
     }
     val Any?.list: List<Any?> get() = when (this) {
         is Iterable<*> -> this.toList()
-        else -> listOf()
+        null -> listOf()
+        else -> listOf(this)
     }
 }
 
