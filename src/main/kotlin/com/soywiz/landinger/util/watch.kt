@@ -7,7 +7,7 @@ import java.nio.file.WatchEvent
 import java.nio.file.WatchKey
 import kotlin.collections.LinkedHashMap
 
-fun File.watchTree(block: (event: WatchEvent<*>) -> Unit): Cancellable {
+fun File.watchTree(block: (event: WatchEvent<*>, key: WatchKey, baseFile: File?) -> Unit): Cancellable {
     var running = true
     val rootFolder = this.absoluteFile
     val watchService = rootFolder.toPath().fileSystem.newWatchService()
@@ -55,7 +55,7 @@ fun File.watchTree(block: (event: WatchEvent<*>) -> Unit): Cancellable {
                 //        registerFolders()
                 //    }
                 //}
-                for (event in watchKey.pollEvents()) block(event)
+                for (event in watchKey.pollEvents()) block(event, watchKey, keysRev[watchKey])
                 if (!watchKey.reset()) break
             }
         } finally {

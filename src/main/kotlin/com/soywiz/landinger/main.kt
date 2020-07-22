@@ -5,22 +5,28 @@ import com.soywiz.klock.DateTime
 import com.soywiz.klock.format
 import com.soywiz.klock.jvm.toDate
 import com.soywiz.klock.jvm.toDateTime
-import com.soywiz.korim.format.ImageFormats
-import com.soywiz.korim.format.PNG
-import com.soywiz.korim.format.RegisteredImageFormats
+import com.soywiz.korim.bitmap.Bitmap
+import com.soywiz.korim.bitmap.Bitmap32
+import com.soywiz.korim.bitmap.context2d
+import com.soywiz.korim.format.*
 import com.soywiz.korinject.AsyncInjector
 import com.soywiz.korinject.Singleton
 import com.soywiz.korinject.jvmAutomapping
 import com.soywiz.korio.file.std.get
+import com.soywiz.korio.file.std.toVfs
 import com.soywiz.korio.lang.UTF8
 import com.soywiz.korio.lang.substr
 import com.soywiz.korio.lang.toByteArray
 import com.soywiz.korio.stream.openSync
+import com.soywiz.korma.geom.Anchor
+import com.soywiz.korma.geom.Rectangle
+import com.soywiz.korma.geom.ScaleMode
 import com.soywiz.korte.*
 import com.soywiz.korte.dynamic.Mapper2
 import com.soywiz.krypto.sha1
 import com.soywiz.landinger.korim.JPEG
 import com.soywiz.landinger.modules.*
+import com.soywiz.landinger.modules.Dynamic.int
 import com.soywiz.landinger.modules.Dynamic.list
 import com.soywiz.landinger.modules.Dynamic.str
 import com.soywiz.landinger.util.*
@@ -47,6 +53,7 @@ import kotlinx.coroutines.runBlocking
 import org.jsoup.Jsoup
 import org.jsoup.safety.Whitelist
 import java.io.File
+import java.nio.file.Path
 import java.text.SimpleDateFormat
 import java.util.*
 import kotlin.collections.LinkedHashMap
@@ -323,6 +330,27 @@ class LandingServing(
                     }
                 }
             },
+            Filter("resized_image") {
+                val file = getAbsoluteFile(subject.str)
+                val width = args.getOrNull(0).int
+                val height = args.getOrNull(1).int
+                if (file == null) {
+                    subject
+                } else {
+                    val nameSha1 = file.canonicalPath.sha1().hex
+
+                    val baseFileName = "${width}x${height}/${nameSha1.substr(0, 1)}/${nameSha1.substr(0, 2)}/${nameSha1.substr(0, 4)}/${nameSha1}.jpg"
+                    val resizesFile = File(folders.cache, "__resizes/$baseFileName")
+                    if (!resizesFile.exists()) {
+                        resizesFile.parentFile.mkdirs()
+                        file.toVfs().readBitmap().toBMP32()
+                            .resized(width, height, ScaleMode.COVER, Anchor.MIDDLE_CENTER)
+                            .writeTo(resizesFile.toVfs(), JPEG)
+                    }
+                    "/__resizes/$baseFileName"
+                }
+                //""
+            },
             Filter("date_rfc3339") {
                 val subject = this.subject
                 val date: DateTime = when (subject) {
@@ -401,8 +429,10 @@ class LandingServing(
                 configService.reloadConfig()
             }
         }.apply { isDaemon = true }.start()
-        folders.content.watchTree { event ->
-            if (!event.context().toString().contains("cache.sq3")) {
+        folders.content.watchTree { event, key, baseFile ->
+            val fullFile = File(baseFile, event.context().toString())
+            //println("Path: $fullFile")
+            if (!fullFile.canonicalPath.contains(".cache")) {
                 doReload.notifyAll()
             }
         }
@@ -469,16 +499,39 @@ class LandingServing(
             serveEntry(permalink, call)
         } else {
             //println("STATIC: $permalink [0]")
-            val file = folders.static.child(permalink)
-            //println("STATIC: $permalink -> $file : ${file?.exists()} : ${file?.isFile}")
-            if (file?.isFile == true) {
-                call.respondFile(file)
+            if (permalink.startsWith("/__resizes/")) {
+                val file = folders.cache["__resizes"].child(permalink.removePrefix("/__resizes/"))
+                //println("STATIC: $permalink -> $file : ${file?.exists()} : ${file?.isFile}")
+                if (file?.isFile == true) {
+                    call.respondFile(file)
+                } else {
+                    throw NotFoundException()
+                }
             } else {
-                throw NotFoundException()
+                val file = folders.static.child(permalink)
+                //println("STATIC: $permalink -> $file : ${file?.exists()} : ${file?.isFile}")
+                if (file?.isFile == true) {
+                    call.respondFile(file)
+                } else {
+                    throw NotFoundException()
+                }
             }
         }
     }
 }
+
+// @TODO: Move to KorIM?
+private fun Bitmap.resized(width: Int, height: Int, scale: ScaleMode, anchor: Anchor): Bitmap {
+    val bmp = this
+    val out = bmp.createWithThisFormat(width, height)
+    out.context2d(antialiased = true) {
+        val rect = Rectangle(0, 0, width, height).place(bmp.width.toDouble(), bmp.height.toDouble(), anchor, scale)
+        drawImage(bmp, rect.x, rect.y, rect.width, rect.height)
+    }
+    return out
+}
+
+fun String.sha1() = this.toByteArray(UTF8).sha1()
 
 private val DATE_FORMAT_REGEXPS: Map<String, String> =
     mapOf(
