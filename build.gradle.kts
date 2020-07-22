@@ -11,11 +11,14 @@ repositories {
     mavenLocal()
     mavenCentral()
     jcenter()
+    maven { url = uri("https://dl.bintray.com/korlibs/korlibs") }
 }
 
 val korteVersion: String by project
 val korinjectVersion: String by project
 val kryptoVersion: String by project
+val korimVersion: String by project
+val kminiormVersion: String by project
 
 dependencies {
     //val kotlinx_html_version = "0.7.1"
@@ -50,13 +53,16 @@ dependencies {
 
     implementation("com.soywiz.korlibs.korte:korte-jvm:$korteVersion")
     implementation("com.soywiz.korlibs.korte:korte-korio-jvm:$korteVersion")
+    implementation("com.soywiz.korlibs.korim:korim-jvm:$korimVersion")
+    //implementation("com.soywiz.korlibs.korim:korim-jpeg-jvm:$korimVersion")
 
     implementation("com.soywiz.korlibs.korinject:korinject-jvm:$korinjectVersion")
 
-    implementation("com.soywiz.kminiorm:kminiorm:0.5.0")
-    implementation("com.soywiz.kminiorm:kminiorm-jdbc:0.5.0")
+    implementation("com.soywiz.korlibs.kminiorm:kminiorm-jvm:$kminiormVersion")
+    implementation("com.soywiz.korlibs.kminiorm:kminiorm-jdbc-jvm:$kminiormVersion")
+    implementation("org.xerial:sqlite-jdbc:3.30.1")
     implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.10.2")
-    implementation("com.h2database:h2:1.4.199")
+    //implementation("com.h2database:h2:1.4.199")
     testImplementation("junit:junit:4.13")
     testImplementation("org.jetbrains.kotlin:kotlin-test")
     testImplementation("org.jetbrains.kotlin:kotlin-test-junit")

@@ -5,13 +5,21 @@ import com.soywiz.klock.DateTime
 import com.soywiz.klock.format
 import com.soywiz.klock.jvm.toDate
 import com.soywiz.klock.jvm.toDateTime
+import com.soywiz.korim.format.ImageFormats
+import com.soywiz.korim.format.PNG
+import com.soywiz.korim.format.RegisteredImageFormats
 import com.soywiz.korinject.AsyncInjector
 import com.soywiz.korinject.Singleton
 import com.soywiz.korinject.jvmAutomapping
 import com.soywiz.korio.file.std.get
+import com.soywiz.korio.lang.UTF8
 import com.soywiz.korio.lang.substr
+import com.soywiz.korio.lang.toByteArray
+import com.soywiz.korio.stream.openSync
 import com.soywiz.korte.*
 import com.soywiz.korte.dynamic.Mapper2
+import com.soywiz.krypto.sha1
+import com.soywiz.landinger.korim.JPEG
 import com.soywiz.landinger.modules.*
 import com.soywiz.landinger.modules.Dynamic.list
 import com.soywiz.landinger.modules.Dynamic.str
@@ -55,6 +63,8 @@ suspend fun main(args: Array<String>) {
     var serve = false
     var generate = false
     var showHelp = false
+
+    RegisteredImageFormats.register(PNG, JPEG)
 
     cli.registerSwitch<String>("-c", "--content-dir", desc = "Sets the content directory (default)") { config.contentDir = it }
     cli.registerSwitch<Boolean>("-s", "--serve", desc = "") { serve = it }
@@ -191,7 +201,8 @@ class LandingServing(
     val entries: Entries,
     val configService: ConfigService,
     val pageShownBus: PageShownBus,
-    val youtube: YoutubeService
+    val youtube: YoutubeService,
+    val cache: Cache
 ) {
     val templateProvider = object : NewTemplateProvider {
         override suspend fun newGet(template: String): TemplateContent? {
@@ -228,6 +239,10 @@ class LandingServing(
     }
 
     private val templateConfig2: TemplateConfig get() = templateConfig
+
+    fun getAbsoluteFile(path: String): File? {
+        return folders.static.child(path)?.takeIfExists()?.canonicalFile
+    }
 
     val templateConfig = TemplateConfig(
         extraTags = listOf(
@@ -292,7 +307,21 @@ class LandingServing(
                 } else {
                     SimpleDateFormat(args[0].toDynamicString()).format(date ?: Date(0L))
                 }
-
+            },
+            Filter("image_size") {
+                val file = getAbsoluteFile(subject.str)
+                cache.get("image_size.file.${file?.absolutePath?.toByteArray(UTF8)?.sha1()?.hex}") {
+                    val bytes = file?.readBytes()
+                    val sha1 = bytes?.sha1()?.hex
+                    cache.get("image_size.hash.$sha1") {
+                        val header = try {
+                            bytes?.let { RegisteredImageFormats.decodeHeader(it.openSync()) }
+                        } catch (e: Throwable) {
+                            null
+                        }
+                        mapOf("width" to (header?.width ?: 0), "height" to (header?.height ?: 0))
+                    }
+                }
             },
             Filter("date_rfc3339") {
                 val subject = this.subject
@@ -349,14 +378,6 @@ class LandingServing(
                 //println(" --> ")
                 if (it[0] is String) list.getOrNull(0) else list
             }
-            /*
-            curl \
-                'https://www.googleapis.com/youtube/v3/videos?part=contentDetails&part=snippet&id=mfJtWm5UddM&id=fCE7-ofMVbM&key=[YOUR_API_KEY]' \
-
-              --header 'Accept: application/json' \
-              --compressed
-
-             */
         ),
         contentTypeProcessor = { content, contentType ->
             when (contentType) {
@@ -380,8 +401,10 @@ class LandingServing(
                 configService.reloadConfig()
             }
         }.apply { isDaemon = true }.start()
-        folders.content.watchTree {
-            doReload.notifyAll()
+        folders.content.watchTree { event ->
+            if (!event.context().toString().contains("cache.sq3")) {
+                doReload.notifyAll()
+            }
         }
         configService.reloadConfig()
     }

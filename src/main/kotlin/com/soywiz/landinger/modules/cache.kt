@@ -1,22 +1,50 @@
 package com.soywiz.landinger.modules
 
+import com.soywiz.klock.DateTime
+import com.soywiz.klock.TimeSpan
+import com.soywiz.klock.days
+import com.soywiz.kminiorm.*
+import com.soywiz.kminiorm.dialect.SqliteDialect
 import com.soywiz.korinject.Singleton
-import com.soywiz.korio.file.std.get
 import com.soywiz.landinger.Folders
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 import java.io.File
 import kotlin.reflect.KClass
 
 @Singleton
 class Cache(val folders: Folders) {
-    suspend inline fun <reified T : Any> get(key: String, noinline gen: suspend () -> T): T = get(key, T::class, gen)
+    suspend inline fun <reified T : Any> get(key: String, ttl: TimeSpan = 365.days, noinline gen: suspend () -> T): T = get(key, T::class, ttl, gen)
     suspend inline fun <reified T : Any> getOrNull(key: String): T? = getOrNull(key, T::class)
 
-    init {
-        folders.cache.mkdirs()
+    data class Entry(
+        @DbPrimary val key: String,
+        val content: String,
+        val validUntil: Long
+    ) : DbBaseModel
+
+    private val sqliteFile = File(folders.cache, "cache.sq3")
+    private val db = JdbcDb(
+        "jdbc:sqlite:${sqliteFile.absoluteFile.toURI()}",
+        debugSQL = System.getenv("DEBUG_SQL") == "true",
+        dialect = SqliteDialect,
+        async = true
+    )
+    private val entries = db.tableBlocking<Entry>()
+
+    suspend fun has(key: String): Boolean = entries.findOne { it::key eq key AND (it::validUntil ge System.currentTimeMillis()) } != null
+
+    suspend fun put(key: String, value: Any?, ttl: TimeSpan = 365.days) {
+        entries.insert(Entry(key, jsonMapper.writeValueAsString(value), (DateTime.now() + ttl).unixMillisLong), onConflict = DbOnConflict.REPLACE)
     }
 
+    suspend fun <T : Any> getOrNull(key: String, clazz: KClass<T>): T? =
+        entries.findOne { it::key eq key }?.let { jsonMapper.readValue(it.content, clazz.java) }
+
+    suspend fun <T : Any> get(key: String, clazz: KClass<T>, ttl: TimeSpan = 365.days, gen: suspend () -> T): T {
+        if (!has(key)) put(key, gen(), ttl)
+        return getOrNull(key, clazz)!!
+    }
+
+    /*
     fun getFile(key: String): File = folders.cache[File("$key.cache").name]
 
     fun has(key: String): Boolean {
@@ -44,4 +72,5 @@ class Cache(val folders: Folders) {
             jsonMapper.readValue(file.readText(), clazz.java)
         }
     }
+     */
 }
