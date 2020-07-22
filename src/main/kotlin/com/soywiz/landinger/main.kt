@@ -334,6 +334,14 @@ class LandingServing(
                 val file = getAbsoluteFile(subject.str)
                 val width = args.getOrNull(0).int
                 val height = args.getOrNull(1).int
+                val mode = args.getOrNull(2)?.toString() ?: "cover"
+                val mmode: ScaleMode = when (mode) {
+                    "cover" -> ScaleMode.COVER
+                    "fit", "show_all" -> ScaleMode.SHOW_ALL
+                    "unscaled", "no_scale" -> ScaleMode.NO_SCALE
+                    "fill", "exact" -> ScaleMode.EXACT
+                    else -> ScaleMode.COVER
+                }
                 if (file == null) {
                     subject
                 } else {
@@ -344,7 +352,7 @@ class LandingServing(
                     if (!resizesFile.exists()) {
                         resizesFile.parentFile.mkdirs()
                         file.toVfs().readBitmap().toBMP32()
-                            .resized(width, height, ScaleMode.COVER, Anchor.MIDDLE_CENTER)
+                            .resized(width, height, mmode, Anchor.MIDDLE_CENTER)
                             .writeTo(resizesFile.toVfs(), JPEG)
                     }
                     "/__resizes/$baseFileName"
