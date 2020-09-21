@@ -155,7 +155,7 @@ class Folders(content: File) {
     val posts = content["posts"]
     val collections = content["collections"]
     val static = content["static"]
-    val cache = content[".cache"]
+    val cache = content[".cache"].also { it.mkdirs() }
     val configYml = content["config.yml"]
     val secretsYml = content["secrets.yml"]
 }

@@ -22,13 +22,24 @@ class Cache(val folders: Folders) {
     ) : DbBaseModel
 
     private val sqliteFile = File(folders.cache, "cache.sq3")
-    private val db = JdbcDb(
-        "jdbc:sqlite:${sqliteFile.absoluteFile.toURI()}",
-        debugSQL = System.getenv("DEBUG_SQL") == "true",
-        dialect = SqliteDialect,
-        async = true
-    )
-    private val entries = db.tableBlocking<Entry>()
+    private val dbString = "jdbc:sqlite:${sqliteFile.absoluteFile.toURI()}"
+    private val db = try {
+        JdbcDb(
+            dbString,
+            debugSQL = System.getenv("DEBUG_SQL") == "true",
+            dialect = SqliteDialect,
+            async = true
+        )
+    } catch (e: Throwable) {
+        //System.err.println("Error opening")
+        throw RuntimeException("Error opening DB dbString='$dbString'", e)
+    }
+    private val entries = try {
+        db.tableBlocking<Entry>()
+    } catch (e: Throwable) {
+        //System.err.println("Error opening")
+        throw RuntimeException("Error opening DB dbString='$dbString'", e)
+    }
 
     suspend fun has(key: String): Boolean = entries.findOne { it::key eq key AND (it::validUntil ge System.currentTimeMillis()) } != null
 
