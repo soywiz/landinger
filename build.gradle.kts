@@ -1,7 +1,7 @@
 import org.gradle.kotlin.dsl.*
 
 plugins {
-    kotlin("jvm") version "1.3.72"
+    kotlin("jvm") version "1.4.21"
     application
 }
 group = "com.soywiz.landinger"
@@ -14,32 +14,21 @@ repositories {
     maven { url = uri("https://dl.bintray.com/korlibs/korlibs") }
 }
 
+val klockVersion: String by project
 val korteVersion: String by project
 val korinjectVersion: String by project
 val kryptoVersion: String by project
 val korimVersion: String by project
 val kminiormVersion: String by project
+val ktorVersion: String by project
 
 dependencies {
-    //val kotlinx_html_version = "0.7.1"
-    val ktorVersion = "1.3.0"
-
-
-    // include for server side
-    //implementation("org.jetbrains.kotlinx:kotlinx-html-jvm:${kotlinx_html_version}")
-
     implementation("org.apache.lucene:lucene-core:8.5.0")
     implementation("org.apache.lucene:lucene-queryparser:8.5.0")
-
     implementation("com.vladsch.flexmark:flexmark-all:0.61.6")
     implementation("org.yaml:snakeyaml:1.25")
-
     implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8")
-    //implementation("mysql:mysql-connector-java:8.0.19")
     implementation("org.freemarker:freemarker:2.3.29")
-    //implementation('io.vertx:vertx-web:3.8.5')
-    //implementation('io.vertx:vertx-lang-kotlin:3.8.5')
-    //implementation('io.vertx:vertx-lang-kotlin-coroutines:3.8.5')
     implementation("com.hubspot.slack:slack-client:1.6")
     implementation("io.ktor:ktor-server-netty:$ktorVersion")
     implementation("io.ktor:ktor-client-core-jvm:$ktorVersion")
@@ -47,30 +36,22 @@ dependencies {
     implementation("io.ktor:ktor-client-okhttp:$ktorVersion")
     implementation("io.ktor:ktor-client-jackson:$ktorVersion")
     implementation("io.ktor:ktor-html-builder:$ktorVersion")
-    //implementation('com.soywiz.korlibs.korio:korio-jvm:1.9.8')
-    implementation("com.soywiz.korlibs.klock:klock-jvm:1.10.5")
+    implementation("com.soywiz.korlibs.klock:klock-jvm:$klockVersion")
     implementation("com.soywiz.korlibs.krypto:krypto-jvm:$kryptoVersion")
-
     implementation("com.soywiz.korlibs.korte:korte-jvm:$korteVersion")
     implementation("com.soywiz.korlibs.korte:korte-korio-jvm:$korteVersion")
     implementation("com.soywiz.korlibs.korim:korim-jvm:$korimVersion")
-    //implementation("com.soywiz.korlibs.korim:korim-jpeg-jvm:$korimVersion")
-
     implementation("com.soywiz.korlibs.korinject:korinject-jvm:$korinjectVersion")
-
     implementation("com.soywiz.korlibs.kminiorm:kminiorm-jvm:$kminiormVersion")
     implementation("com.soywiz.korlibs.kminiorm:kminiorm-jdbc-jvm:$kminiormVersion")
     implementation("org.xerial:sqlite-jdbc:3.30.1")
     implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.10.2")
-    //implementation("com.h2database:h2:1.4.199")
+    implementation("ch.qos.logback:logback-classic:1.2.3")
+    implementation("com.yahoo.platform.yui:yuicompressor:2.4.8")
+
     testImplementation("junit:junit:4.13")
     testImplementation("org.jetbrains.kotlin:kotlin-test")
     testImplementation("org.jetbrains.kotlin:kotlin-test-junit")
-
-    implementation("ch.qos.logback:logback-classic:1.2.3")
-
-    implementation("com.yahoo.platform.yui:yuicompressor:2.4.8")
-
 }
 
 tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile> {
