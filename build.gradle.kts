@@ -1,7 +1,7 @@
 import org.gradle.kotlin.dsl.*
 
 plugins {
-    kotlin("jvm") version "1.4.21"
+    kotlin("jvm") version "1.4.30-RC"
     application
 }
 group = "com.soywiz.landinger"
@@ -39,7 +39,7 @@ dependencies {
     implementation("com.soywiz.korlibs.klock:klock-jvm:$klockVersion")
     implementation("com.soywiz.korlibs.krypto:krypto-jvm:$kryptoVersion")
     implementation("com.soywiz.korlibs.korte:korte-jvm:$korteVersion")
-    implementation("com.soywiz.korlibs.korte:korte-korio-jvm:$korteVersion")
+    //implementation("com.soywiz.korlibs.korte:korte-korio-jvm:$korteVersion")
     implementation("com.soywiz.korlibs.korim:korim-jvm:$korimVersion")
     implementation("com.soywiz.korlibs.korinject:korinject-jvm:$korinjectVersion")
     implementation("com.soywiz.korlibs.kminiorm:kminiorm-jvm:$kminiormVersion")

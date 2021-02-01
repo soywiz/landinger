@@ -2,8 +2,7 @@ package com.soywiz.landinger.modules
 
 import com.soywiz.klock.DateTime
 import com.soywiz.korinject.AsyncInjector
-import com.soywiz.korio.util.encoding.unhexIgnoreSpaces
-import com.soywiz.korte.dynamic.Dynamic2
+import com.soywiz.krypto.encoding.*
 import io.ktor.application.Application
 import io.ktor.application.call
 import io.ktor.application.install
