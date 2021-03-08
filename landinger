@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 
-SCRIPT=$(readlink -f "$0")
+#SCRIPT=$(readlink -f "$0")
+SCRIPT=$(python -c "import os; print(os.path.realpath('$0'))")
 SCRIPTDIR=$(dirname "$SCRIPT")
 
 lsof -ti tcp:8080 | xargs kill 2> /dev/null
