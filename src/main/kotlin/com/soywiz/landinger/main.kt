@@ -400,10 +400,10 @@ class LandingServing(
                 Date()
             },
             TeFunction("last_update") {
-                entries.entries.entries.map { it.date }.max() ?: Date()
+                entries.entries.entries.map { it.date }.maxOrNull() ?: Date()
             },
             TeFunction("last_post_update") {
-                entries.entries.entriesByCategory["posts"]?.map { it.date }?.max() ?: Date()
+                entries.entries.entriesByCategory["posts"]?.map { it.date }?.maxOrNull() ?: Date()
             },
             TeFunction("youtube_info") {
                 val ids = it[0].list.map {

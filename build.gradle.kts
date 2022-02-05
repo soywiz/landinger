@@ -1,7 +1,7 @@
 import org.gradle.kotlin.dsl.*
 
 plugins {
-    kotlin("jvm") version "1.4.30-RC"
+    kotlin("jvm") version "1.6.10"
     application
 }
 group = "com.soywiz.landinger"
@@ -11,7 +11,6 @@ repositories {
     mavenLocal()
     mavenCentral()
     jcenter()
-    maven { url = uri("https://dl.bintray.com/korlibs/korlibs") }
 }
 
 val klockVersion: String by project
@@ -44,7 +43,7 @@ dependencies {
     implementation("com.soywiz.korlibs.korinject:korinject-jvm:$korinjectVersion")
     implementation("com.soywiz.korlibs.kminiorm:kminiorm-jvm:$kminiormVersion")
     implementation("com.soywiz.korlibs.kminiorm:kminiorm-jdbc-jvm:$kminiormVersion")
-    implementation("org.xerial:sqlite-jdbc:3.30.1")
+    implementation("org.xerial:sqlite-jdbc:3.36.0.3")
     implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.10.2")
     implementation("ch.qos.logback:logback-classic:1.2.3")
     implementation("com.yahoo.platform.yui:yuicompressor:2.4.8")
