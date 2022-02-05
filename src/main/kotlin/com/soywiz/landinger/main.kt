@@ -60,6 +60,8 @@ import kotlin.collections.LinkedHashMap
 
 
 suspend fun main(args: Array<String>) {
+    System.setProperty("java.awt.headless", "false")
+
     //luceneIndex.search("hello")
     val params1 = System.getProperty("landinger.args")?.toString()?.let { CliParser.parseString(it) }
     val params2 = args.toList()
