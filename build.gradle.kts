@@ -10,7 +10,6 @@ version = "1.0-SNAPSHOT"
 repositories {
     mavenLocal()
     mavenCentral()
-    jcenter()
 }
 
 val klockVersion: String by project
@@ -75,12 +74,13 @@ tasks {
         archiveVersion.set("")
         from(configurations.runtimeClasspath.get().files.map { if (it.isDirectory) it else zipTree(it) })
         with(jar.get())
+        duplicatesStrategy = org.gradle.api.file.DuplicatesStrategy.EXCLUDE
     }
 
     //val run by creating(JavaExec::class) {}
 
     val jarFile = fatJar.outputs.files.first()
-    val server = "soywiz2"
+    val server = "soywiz"
     //val domain = "programar.ovh"
     //val baseDir = "/home/virtual/seo/programar.ovh"
     val domain = "soywiz.com"
