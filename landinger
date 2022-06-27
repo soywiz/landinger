@@ -6,7 +6,7 @@ lsof -ti tcp:8080 | xargs kill 2> /dev/null
 
 if [ "$*" == "" ]
 then
-$SCRIPTDIR/gradlew --project-dir=$SCRIPTDIR run
+$SCRIPTDIR/gradlew --project-dir=$SCRIPTDIR --configuration-cache run
 else
-$SCRIPTDIR/gradlew --project-dir=$SCRIPTDIR run --args="$*"
+$SCRIPTDIR/gradlew --project-dir=$SCRIPTDIR --configuration-cache run --args="$*"
 fi
