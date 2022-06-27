@@ -372,10 +372,11 @@ class LandingServing(
             },
             Filter("date_to_string") {
                 val subject = this.subject
-                //when (subject) {
-                //    is Date -> subject
-                //}
-                subject.toString()
+                when (subject) {
+                    is Date -> subject.toString()
+                    is DateTime -> subject.toStringDefault()
+                    else -> subject.toString()
+                }
             },
             Filter("where_exp") {
                 val ctx = this.context
