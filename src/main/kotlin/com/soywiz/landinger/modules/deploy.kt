@@ -45,7 +45,7 @@ suspend fun Application.installDeploy(injector: AsyncInjector) {
                                     "GIT_SSH_COMMAND=ssh -o StrictHostKeyChecking=no -o IdentitiesOnly=yes -i $rsaKeyFile"
                                 )
 
-                                output.append(exec(arrayOf("whoami")))
+                                output.append(exec(arrayOf("id", "-p")))
                                 output.append("\n")
                                 output.append(withContext(Dispatchers.IO) { rsaKeyPubFile.readText() })
                                 output.append("\n")
