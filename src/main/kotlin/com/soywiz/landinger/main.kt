@@ -290,7 +290,7 @@ class LandingServing(
                     else -> subject.toString()
                 }
                 try {
-                    Template(str, this.context.config)(this.context.scope.map, this.context.mapper)
+                    TemplateFix(str, this.context.templates)(this.context.scope.map, this.context.mapper)
                 } catch (e: Throwable) {
                     e.printStackTrace()
                     //System.err.println(str)
@@ -591,3 +591,10 @@ fun parseAnyDate(dateString: String): Date? {
     val format = determineDateFormat(dateString) ?: return null
     return SimpleDateFormat(format).parse(dateString)
 }
+
+suspend fun TemplateFix(template: String, templates: Templates): Template = Templates(
+    TemplateProvider(mapOf("template" to template)),
+    includes = templates.includes,
+    layouts = templates.layouts,
+    config = templates.config
+).get("template")

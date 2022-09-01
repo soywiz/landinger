@@ -12,12 +12,13 @@ import com.vladsch.flexmark.util.misc.*
 
 private val options = MutableDataSet().also { options ->
     options.setFrom(ParserEmulationProfile.KRAMDOWN)
+    //options.setFrom(ParserEmulationProfile.GITHUB)
     options.set(Parser.EXTENSIONS, mutableListOf<Extension>(
         AbbreviationExtension.create(),
         DefinitionExtension.create(),
         FootnoteExtension.create(),
         TablesExtension.create(),
-        TypographicExtension.create()
+        TypographicExtension.create(),
     ))
 }
 private val parser = Parser.builder(options).build()

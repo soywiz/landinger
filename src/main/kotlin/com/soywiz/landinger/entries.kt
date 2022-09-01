@@ -210,12 +210,16 @@ data class Entry(
 
 
 fun String.forSponsor(sponsor: Boolean): String {
-    return this.replace(Regex("\\$((?:NO)?SPONSOR)\\$:(.*?):\\$\\$", RegexOption.DOT_MATCHES_ALL)) {
+    fun update(it: MatchResult): String {
         val kind = it.groupValues[1]
         val content = it.groupValues[2]
         val kindSponsor = kind == "SPONSOR"
-        if (sponsor == kindSponsor) content else ""
+        return if (sponsor == kindSponsor) content else ""
     }
+
+    return this
+        .replace(Regex("\\$((?:NO)?SPONSOR)\\$:(.*?):\\$\\$", RegexOption.DOT_MATCHES_ALL)) { update(it) }
+        //.replace(Regex("\\$((?:NO)?SPONSOR)\\$:(.*)", RegexOption.DOT_MATCHES_ALL)) { update(it) }
 }
 
 
