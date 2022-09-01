@@ -3,6 +3,7 @@ package com.soywiz.landinger
 import com.soywiz.klock.*
 import com.soywiz.klock.jvm.toDate
 import com.soywiz.korinject.Singleton
+import com.soywiz.korio.dynamic.KDynamic.Companion.toIntOrNull
 import com.soywiz.korte.dynamic.Dynamic2Gettable
 import com.soywiz.landinger.util.absoluteUrl
 import com.soywiz.landinger.util.canonicalPermalink
@@ -163,7 +164,11 @@ data class Entry(
         check(permalink == permalink.canonicalPermalink())
     }
 
-    val sponsored by lazy { rawFileContent.contains("\$SPONSOR\$:") }
+    val sponsored by lazy {
+        rawFileContent.contains("\$SPONSOR\$:")
+            //|| rawFileContent.contains("{% if sponsored(")
+            || (headers["sponsor_tier"].toIntOrNull()?.compareTo(0) == 1)
+    }
 
     override suspend fun dynamic2Get(key: Any?): Any? {
         val keyStr = key.toString()
