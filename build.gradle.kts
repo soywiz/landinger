@@ -21,6 +21,7 @@ val kminiormVersion: String by project
 val ktorVersion: String by project
 
 dependencies {
+    implementation("io.methvin:directory-watcher:0.16.1")
     implementation("org.apache.lucene:lucene-core:8.5.0")
     implementation("org.apache.lucene:lucene-queryparser:8.5.0")
     implementation("com.vladsch.flexmark:flexmark-all:0.61.6")

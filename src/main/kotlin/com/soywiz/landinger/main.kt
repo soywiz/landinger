@@ -1,5 +1,6 @@
 package com.soywiz.landinger
 
+import com.fasterxml.jackson.module.kotlin.*
 import com.soywiz.klock.DateFormat
 import com.soywiz.klock.DateTime
 import com.soywiz.klock.format
@@ -12,6 +13,7 @@ import com.soywiz.korim.format.*
 import com.soywiz.korinject.AsyncInjector
 import com.soywiz.korinject.Singleton
 import com.soywiz.korinject.jvmAutomapping
+import com.soywiz.korio.dynamic.*
 import com.soywiz.korio.file.std.get
 import com.soywiz.korio.file.std.toVfs
 import com.soywiz.korio.lang.UTF8
@@ -22,13 +24,10 @@ import com.soywiz.korma.geom.Anchor
 import com.soywiz.korma.geom.Rectangle
 import com.soywiz.korma.geom.ScaleMode
 import com.soywiz.korte.*
-import com.soywiz.korte.dynamic.Mapper2
+import com.soywiz.korte.dynamic.*
 import com.soywiz.krypto.sha1
 import com.soywiz.landinger.korim.JPEG
 import com.soywiz.landinger.modules.*
-import com.soywiz.landinger.modules.Dynamic.int
-import com.soywiz.landinger.modules.Dynamic.list
-import com.soywiz.landinger.modules.Dynamic.str
 import com.soywiz.landinger.util.*
 import io.ktor.application.ApplicationCall
 import io.ktor.application.call
@@ -57,7 +56,6 @@ import java.nio.file.Path
 import java.text.SimpleDateFormat
 import java.util.*
 import kotlin.collections.LinkedHashMap
-
 
 suspend fun main(args: Array<String>) {
     System.setProperty("java.awt.headless", "false")
@@ -262,6 +260,12 @@ class LandingServing(
             }
         ),
         extraFilters = listOf(
+            Filter("default") {
+                when (subject) {
+                    null, false, "" -> this.args[0]
+                    else -> subject
+                }
+            },
             Filter("img_src") {
                 val path = subject.toString()
                 val absPath = getAbsoluteUrl(path, context.scope)
@@ -289,9 +293,15 @@ class LandingServing(
                     is RawString -> subject.str
                     else -> subject.toString()
                 }
+
                 try {
-                    TemplateFix(str, this.context.templates)(this.context.scope.map, this.context.mapper)
+                    val template = Template(str, this.context.templates)
+                    template
+                        .createEvalContext()
+                        .exec(this.context.scope.map, mapper = mapper, parentScope = this.context.scope)
+                        .str
                 } catch (e: Throwable) {
+
                     e.printStackTrace()
                     //System.err.println(str)
                     //"--ERROR-- : ${subject::class} : $str"
@@ -318,7 +328,7 @@ class LandingServing(
                 }
             },
             Filter("image_size") {
-                val file = getAbsoluteFile(subject.str)
+                val file = getAbsoluteFile(subject.dyn.str)
                 cache.get("image_size.file.${file?.absolutePath?.toByteArray(UTF8)?.sha1()?.hex}") {
                     val bytes = file?.readBytes()
                     val sha1 = bytes?.sha1()?.hex
@@ -333,9 +343,9 @@ class LandingServing(
                 }
             },
             Filter("resized_image") {
-                val file = getAbsoluteFile(subject.str)
-                val width = args.getOrNull(0).int
-                val height = args.getOrNull(1).int
+                val file = getAbsoluteFile(subject.dyn.str)
+                val width = args.getOrNull(0).dyn.int
+                val height = args.getOrNull(1).dyn.int
                 val mode = args.getOrNull(2)?.toString() ?: "cover"
                 val mmode: ScaleMode = when (mode) {
                     "cover" -> ScaleMode.COVER
@@ -395,6 +405,15 @@ class LandingServing(
             }
         ),
         extraFunctions = listOf(
+            TeFunction("sponsored") {
+                val price = Dynamic2.accessAny(this.scope.get("session"), "price", mapper).dyn.int
+                val post_sponsor_tier = Dynamic2.accessAny(this.scope.get("post"), "sponsor_tier", mapper).dyn.toIntOrNull()
+                val sponsor_tier = post_sponsor_tier ?: it.getOrNull(0).dyn.toIntOrNull() ?: 1
+                //println("session=${this.scope.get("session").dyn["price"]}")
+                //println("post_sponsor_tier=${post_sponsor_tier}")
+                //println("sponsorted: price=$price, sponsor_tier=$sponsor_tier")
+                price >= sponsor_tier
+            },
             TeFunction("error") { throw NotFoundException() },
             TeFunction("not_found") { throw NotFoundException() },
             TeFunction("permanent_redirect") { throw HttpRedirectException(it[0].toString(), permanent = true) },
@@ -409,8 +428,8 @@ class LandingServing(
                 entries.entries.entriesByCategory["posts"]?.map { it.date }?.maxOrNull() ?: Date()
             },
             TeFunction("youtube_info") {
-                val ids = it[0].list.map {
-                    (if (it is Map<*, *>) it["id"].str else it.str).trim()
+                val ids = it[0].dyn.list.map {
+                    (if (it.value is Map<*, *>) it["id"].str else it.str).trim()
                 }
                 val list = youtube.getYoutubeVideoInfo(ids)
                 //println("youtube_ids: ${ids.joinToString(" || ")}")
@@ -440,10 +459,10 @@ class LandingServing(
                 configService.reloadConfig()
             }
         }.apply { isDaemon = true }.start()
-        folders.content.watchTree { event, key, baseFile ->
-            val fullFile = File(baseFile, event.context().toString())
-            //println("Path: $fullFile")
-            if (!fullFile.canonicalPath.contains(".cache")) {
+        //folders.content.watchTree { baseFile, path ->
+        folders.content.watchTreeNew { fullFile ->
+            println("Changed: $fullFile")
+            if (!fullFile.canonicalPath.contains(".cache") && !fullFile.canonicalPath.contains(".idea")) {
                 doReload.notifyAll()
             }
         }
@@ -471,7 +490,7 @@ class LandingServing(
             val paramsResults = entry.permalinkPattern.matchEntire(permalink)
             if (paramsResults != null) {
                 for (name in entry.permalinkNames) {
-                    val value = paramsResults.groups[name]?.value
+                    val value = paramsResults.groups.get(name)?.value
                     params[name] = if (name == "n") value?.toInt() else value
                 }
             }
@@ -494,10 +513,12 @@ class LandingServing(
         val text = templates.render(permalink, tplParams)
         val finalText = text.forSponsor(page.isSponsor)
 
-        call.respondText(finalText, when {
-            entry?.isXml == true -> ContentType.Text.Xml
-            else -> ContentType.Text.Html
-        }, code)
+        call.respondText(
+            finalText, when {
+                entry?.isXml == true -> ContentType.Text.Xml
+                else -> ContentType.Text.Html
+            }, code
+        )
     }
 
     suspend fun servePost(pipeline: PipelineContext<Unit, ApplicationCall>, permalink: String) = pipeline.apply {
@@ -546,30 +567,30 @@ fun String.sha1() = this.toByteArray(UTF8).sha1()
 
 private val DATE_FORMAT_REGEXPS: Map<String, String> =
     mapOf(
-            "^\\d{8}$" to "yyyyMMdd",
-            "^\\d{1,2}-\\d{1,2}-\\d{4}$" to "dd-MM-yyyy",
-            "^\\d{4}-\\d{1,2}-\\d{1,2}$" to "yyyy-MM-dd",
-            "^\\d{1,2}/\\d{1,2}/\\d{4}$" to "MM/dd/yyyy",
-            "^\\d{4}/\\d{1,2}/\\d{1,2}$" to "yyyy/MM/dd",
-            "^\\d{1,2}\\s[a-z]{3}\\s\\d{4}$" to "dd MMM yyyy",
-            "^\\d{1,2}\\s[a-z]{4,}\\s\\d{4}$" to "dd MMMM yyyy",
-            "^\\d{12}$" to "yyyyMMddHHmm",
-            "^\\d{8}\\s\\d{4}$" to "yyyyMMdd HHmm",
-            "^\\d{1,2}-\\d{1,2}-\\d{4}\\s\\d{1,2}:\\d{2}$" to "dd-MM-yyyy HH:mm",
-            "^\\d{4}-\\d{1,2}-\\d{1,2}\\s\\d{1,2}:\\d{2}$" to "yyyy-MM-dd HH:mm",
-            "^\\d{1,2}/\\d{1,2}/\\d{4}\\s\\d{1,2}:\\d{2}$" to "MM/dd/yyyy HH:mm",
-            "^\\d{4}/\\d{1,2}/\\d{1,2}\\s\\d{1,2}:\\d{2}$" to "yyyy/MM/dd HH:mm",
-            "^\\d{1,2}\\s[a-z]{3}\\s\\d{4}\\s\\d{1,2}:\\d{2}$" to "dd MMM yyyy HH:mm",
-            "^\\d{1,2}\\s[a-z]{4,}\\s\\d{4}\\s\\d{1,2}:\\d{2}$" to "dd MMMM yyyy HH:mm",
-            "^\\d{14}$" to "yyyyMMddHHmmss",
-            "^\\d{8}\\s\\d{6}$" to "yyyyMMdd HHmmss",
-            "^\\d{1,2}-\\d{1,2}-\\d{4}\\s\\d{1,2}:\\d{2}:\\d{2}$" to "dd-MM-yyyy HH:mm:ss",
-            "^\\d{4}-\\d{1,2}-\\d{1,2}\\s\\d{1,2}:\\d{2}:\\d{2}$" to "yyyy-MM-dd HH:mm:ss",
-            "^\\d{1,2}/\\d{1,2}/\\d{4}\\s\\d{1,2}:\\d{2}:\\d{2}$" to "MM/dd/yyyy HH:mm:ss",
-            "^\\d{4}/\\d{1,2}/\\d{1,2}\\s\\d{1,2}:\\d{2}:\\d{2}$" to "yyyy/MM/dd HH:mm:ss",
-            "^\\d{1,2}\\s[a-z]{3}\\s\\d{4}\\s\\d{1,2}:\\d{2}:\\d{2}$" to "dd MMM yyyy HH:mm:ss",
-            "^\\d{1,2}\\s[a-z]{4,}\\s\\d{4}\\s\\d{1,2}:\\d{2}:\\d{2}$" to "dd MMMM yyyy HH:mm:ss"
-)
+        "^\\d{8}$" to "yyyyMMdd",
+        "^\\d{1,2}-\\d{1,2}-\\d{4}$" to "dd-MM-yyyy",
+        "^\\d{4}-\\d{1,2}-\\d{1,2}$" to "yyyy-MM-dd",
+        "^\\d{1,2}/\\d{1,2}/\\d{4}$" to "MM/dd/yyyy",
+        "^\\d{4}/\\d{1,2}/\\d{1,2}$" to "yyyy/MM/dd",
+        "^\\d{1,2}\\s[a-z]{3}\\s\\d{4}$" to "dd MMM yyyy",
+        "^\\d{1,2}\\s[a-z]{4,}\\s\\d{4}$" to "dd MMMM yyyy",
+        "^\\d{12}$" to "yyyyMMddHHmm",
+        "^\\d{8}\\s\\d{4}$" to "yyyyMMdd HHmm",
+        "^\\d{1,2}-\\d{1,2}-\\d{4}\\s\\d{1,2}:\\d{2}$" to "dd-MM-yyyy HH:mm",
+        "^\\d{4}-\\d{1,2}-\\d{1,2}\\s\\d{1,2}:\\d{2}$" to "yyyy-MM-dd HH:mm",
+        "^\\d{1,2}/\\d{1,2}/\\d{4}\\s\\d{1,2}:\\d{2}$" to "MM/dd/yyyy HH:mm",
+        "^\\d{4}/\\d{1,2}/\\d{1,2}\\s\\d{1,2}:\\d{2}$" to "yyyy/MM/dd HH:mm",
+        "^\\d{1,2}\\s[a-z]{3}\\s\\d{4}\\s\\d{1,2}:\\d{2}$" to "dd MMM yyyy HH:mm",
+        "^\\d{1,2}\\s[a-z]{4,}\\s\\d{4}\\s\\d{1,2}:\\d{2}$" to "dd MMMM yyyy HH:mm",
+        "^\\d{14}$" to "yyyyMMddHHmmss",
+        "^\\d{8}\\s\\d{6}$" to "yyyyMMdd HHmmss",
+        "^\\d{1,2}-\\d{1,2}-\\d{4}\\s\\d{1,2}:\\d{2}:\\d{2}$" to "dd-MM-yyyy HH:mm:ss",
+        "^\\d{4}-\\d{1,2}-\\d{1,2}\\s\\d{1,2}:\\d{2}:\\d{2}$" to "yyyy-MM-dd HH:mm:ss",
+        "^\\d{1,2}/\\d{1,2}/\\d{4}\\s\\d{1,2}:\\d{2}:\\d{2}$" to "MM/dd/yyyy HH:mm:ss",
+        "^\\d{4}/\\d{1,2}/\\d{1,2}\\s\\d{1,2}:\\d{2}:\\d{2}$" to "yyyy/MM/dd HH:mm:ss",
+        "^\\d{1,2}\\s[a-z]{3}\\s\\d{4}\\s\\d{1,2}:\\d{2}:\\d{2}$" to "dd MMM yyyy HH:mm:ss",
+        "^\\d{1,2}\\s[a-z]{4,}\\s\\d{4}\\s\\d{1,2}:\\d{2}:\\d{2}$" to "dd MMMM yyyy HH:mm:ss"
+    )
 
 /**
  * Determine SimpleDateFormat pattern matching with the given date string. Returns null if
@@ -592,9 +613,29 @@ fun parseAnyDate(dateString: String): Date? {
     return SimpleDateFormat(format).parse(dateString)
 }
 
-suspend fun TemplateFix(template: String, templates: Templates): Template = Templates(
-    TemplateProvider(mapOf("template" to template)),
-    includes = templates.includes,
-    layouts = templates.layouts,
-    config = templates.config
-).get("template")
+suspend fun Template(
+    template: String,
+    templates: Templates,
+    includes: NewTemplateProvider = templates.includes,
+    layouts: NewTemplateProvider = templates.layouts,
+    config: TemplateConfig = templates.config,
+    cache: Boolean = templates.cache,
+): Template {
+    val root = TemplateProvider(mapOf("template" to template))
+    return Templates(
+        root = root,
+        includes = includes,
+        layouts = layouts,
+        config = config,
+        cache = cache,
+    ).get("template")
+}
+
+suspend fun Template.TemplateEvalContext.exec(args: Any?, mapper: ObjectMapper2 = Mapper2, parentScope: Template.Scope? = null): Template.ExecResult {
+    val str = StringBuilder()
+    val scope = Template.Scope(args, mapper, parentScope)
+    if (template.frontMatter != null) for ((k, v) in template.frontMatter!!) scope.set(k, v)
+    val context = Template.EvalContext(this, scope, template.config, mapper, write = { str.append(it) })
+    eval(context)
+    return Template.ExecResult(context, str.toString())
+}

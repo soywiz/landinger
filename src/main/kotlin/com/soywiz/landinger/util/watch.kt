@@ -1,13 +1,44 @@
 package com.soywiz.landinger.util
 
-import com.soywiz.korio.lang.Cancellable
-import java.io.File
-import java.nio.file.StandardWatchEventKinds
-import java.nio.file.WatchEvent
-import java.nio.file.WatchKey
-import kotlin.collections.LinkedHashMap
+import com.soywiz.korio.lang.*
+import io.ktor.util.*
+import io.methvin.watcher.*
+import java.io.*
+import java.nio.file.*
+import kotlin.concurrent.*
 
-fun File.watchTree(block: (event: WatchEvent<*>, key: WatchKey, baseFile: File?) -> Unit): Cancellable {
+fun File.watchTreeNew(block: (file: File) -> Unit): Cancellable {
+    val path = this.toPath()
+    println("Watching path=$path")
+    val watcher = DirectoryWatcher.builder()
+        .path(path) // or use paths(directoriesToWatch)
+        .listener { event ->
+            //block(event.rootPath().toFile())
+            block(event.path().toFile())
+            /*
+            val rootFile = event.rootPath().toFile()
+            val file = event.path().toFile()
+            println("event[${event.eventType()}] : rootPath=${event.rootPath()}, path=${event.path()}")
+            when (event.eventType()) {
+                DirectoryChangeEvent.EventType.CREATE -> Unit
+                DirectoryChangeEvent.EventType.MODIFY -> Unit
+                DirectoryChangeEvent.EventType.DELETE -> Unit
+            }
+            */
+        }
+        // .fileHashing(false) // defaults to true
+        // .logger(logger) // defaults to LoggerFactory.getLogger(DirectoryWatcher.class)
+        // .watchService(watchService) // defaults based on OS to either JVM WatchService or the JNA macOS WatchService
+        .build()
+
+    thread(start = true, isDaemon = true) {
+        watcher.watch()
+    }
+
+    return Cancellable { watcher.close() }
+}
+
+fun File.watchTree(block: (file: File) -> Unit): Cancellable {
     var running = true
     val rootFolder = this.absoluteFile
     val watchService = rootFolder.toPath().fileSystem.newWatchService()
@@ -32,7 +63,7 @@ fun File.watchTree(block: (event: WatchEvent<*>, key: WatchKey, baseFile: File?)
 
     fun registerFolders() {
         for (sfile in rootFolder.walkTopDown()) {
-            if (sfile.isDirectory){
+            if (sfile.isDirectory) {
                 registerFileOnce(sfile)
             }
         }
@@ -55,7 +86,10 @@ fun File.watchTree(block: (event: WatchEvent<*>, key: WatchKey, baseFile: File?)
                 //        registerFolders()
                 //    }
                 //}
-                for (event in watchKey.pollEvents()) block(event, watchKey, keysRev[watchKey])
+                for (event in watchKey.pollEvents()) {
+                    //block(keysRev[watchKey], event.context().toString())
+                    block(File(keysRev[watchKey], event.context().toString()))
+                }
                 if (!watchKey.reset()) break
             }
         } finally {
