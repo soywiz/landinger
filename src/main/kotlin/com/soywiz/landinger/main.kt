@@ -52,7 +52,7 @@ import io.ktor.util.pipeline.PipelineContext
 import kotlinx.coroutines.runBlocking
 import org.jsoup.Jsoup
 import org.jsoup.safety.Whitelist
-import java.io.File
+import java.io.*
 import java.nio.file.Path
 import java.text.SimpleDateFormat
 import java.util.*
@@ -334,46 +334,60 @@ class LandingServing(
                 }
             },
             Filter("image_size") {
-                val file = getAbsoluteFile(subject.dyn.str)
-                cache.get("image_size.file.${file?.absolutePath?.toByteArray(UTF8)?.sha1()?.hex}") {
-                    val bytes = file?.readBytes()
-                    val sha1 = bytes?.sha1()?.hex
-                    cache.get("image_size.hash.$sha1") {
-                        val header = try {
-                            bytes?.let { RegisteredImageFormats.decodeHeader(it.openSync()) }
-                        } catch (e: Throwable) {
-                            null
+                try {
+                    val file = getAbsoluteFile(subject.dyn.str)
+                    cache.get("image_size.file.${file?.absolutePath?.toByteArray(UTF8)?.sha1()?.hex}") {
+                        val bytes = file?.readBytes()
+                        val sha1 = bytes?.sha1()?.hex
+                        cache.get("image_size.hash.$sha1") {
+                            val header = try {
+                                bytes?.let { RegisteredImageFormats.decodeHeader(it.openSync()) }
+                            } catch (e: Throwable) {
+                                null
+                            }
+                            mapOf("width" to (header?.width ?: 0), "height" to (header?.height ?: 0))
                         }
-                        mapOf("width" to (header?.width ?: 0), "height" to (header?.height ?: 0))
                     }
+                } catch (e: Throwable) {
+                    if (e !is FileNotFoundException) {
+                        e.printStackTrace()
+                    }
+                    mapOf("width" to 0, "height" to 0)
                 }
             },
             Filter("resized_image") {
-                val file = getAbsoluteFile(subject.dyn.str)
-                val width = args.getOrNull(0).dyn.int
-                val height = args.getOrNull(1).dyn.int
-                val mode = args.getOrNull(2)?.toString() ?: "cover"
-                val mmode: ScaleMode = when (mode) {
-                    "cover" -> ScaleMode.COVER
-                    "fit", "show_all" -> ScaleMode.SHOW_ALL
-                    "unscaled", "no_scale" -> ScaleMode.NO_SCALE
-                    "fill", "exact" -> ScaleMode.EXACT
-                    else -> ScaleMode.COVER
-                }
-                if (file == null) {
-                    subject
-                } else {
-                    val nameSha1 = file.canonicalPath.sha1().hex
-
-                    val baseFileName = "${width}x${height}/${nameSha1.substr(0, 1)}/${nameSha1.substr(0, 2)}/${nameSha1.substr(0, 4)}/${nameSha1}.jpg"
-                    val resizesFile = File(folders.cache, "__resizes/$baseFileName")
-                    if (!resizesFile.exists()) {
-                        resizesFile.parentFile.mkdirs()
-                        file.toVfs().readBitmap().toBMP32()
-                            .resized(width, height, mmode, Anchor.MIDDLE_CENTER)
-                            .writeTo(resizesFile.toVfs(), JPEG)
+                try {
+                    val file = getAbsoluteFile(subject.dyn.str)
+                    val width = args.getOrNull(0).dyn.int
+                    val height = args.getOrNull(1).dyn.int
+                    val mode = args.getOrNull(2)?.toString() ?: "cover"
+                    val mmode: ScaleMode = when (mode) {
+                        "cover" -> ScaleMode.COVER
+                        "fit", "show_all" -> ScaleMode.SHOW_ALL
+                        "unscaled", "no_scale" -> ScaleMode.NO_SCALE
+                        "fill", "exact" -> ScaleMode.EXACT
+                        else -> ScaleMode.COVER
                     }
-                    "/__resizes/$baseFileName"
+                    if (file == null) {
+                        subject
+                    } else {
+                        val nameSha1 = file.canonicalPath.sha1().hex
+
+                        val baseFileName = "${width}x${height}/${nameSha1.substr(0, 1)}/${nameSha1.substr(0, 2)}/${nameSha1.substr(0, 4)}/${nameSha1}.jpg"
+                        val resizesFile = File(folders.cache, "__resizes/$baseFileName")
+                        if (!resizesFile.exists()) {
+                            resizesFile.parentFile.mkdirs()
+                            file.toVfs().readBitmap().toBMP32()
+                                .resized(width, height, mmode, Anchor.MIDDLE_CENTER)
+                                .writeTo(resizesFile.toVfs(), JPEG)
+                        }
+                        "/__resizes/$baseFileName"
+                    }
+                } catch (e: Throwable) {
+                    if (e !is FileNotFoundException) {
+                        e.printStackTrace()
+                    }
+                    "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"
                 }
                 //""
             },
