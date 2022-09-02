@@ -82,7 +82,7 @@ suspend fun getUserLogin(access_token: String): String {
 
 data class SponsorInfo(val login: String, val price: Int, val date: DateTime)
 
-suspend fun getSponsorInfo(login: String, access_token: String): SponsorInfo {
+suspend fun getSponsorInfo(login: String, access_token: String, config: ConfigService): SponsorInfo {
     val data = graphqlCall(
         access_token, """
         query { 
@@ -116,10 +116,16 @@ suspend fun getSponsorInfo(login: String, access_token: String): SponsorInfo {
             }
         }
     }
+
     return SponsorInfo(
         login,
-        //sponsorPrice,
-        if (login == "soywiz") +15 else sponsorPrice,
+        when {
+            login in config.SPONSOR_GITHUB_USERS_5 -> +5
+            login in config.SPONSOR_GITHUB_USERS_10 -> +10
+            login in config.SPONSOR_GITHUB_USERS_15 -> +15
+            login in config.SPONSOR_GITHUB_USERS_30 -> +30
+            else -> sponsorPrice
+        },
         DateTime.now()
     )
 }

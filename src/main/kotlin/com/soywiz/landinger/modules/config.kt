@@ -26,6 +26,11 @@ class ConfigService(val folders: Folders, val startConfig: Config) {
     @Volatile
     var siteData: Map<String, Any?> = mapOf()
 
+    val SPONSOR_GITHUB_USERS_5: Set<String> = (secrets["SPONSOR_GITHUB_USERS_5"] as? Iterable<String>?)?.toSet() ?: emptySet()
+    val SPONSOR_GITHUB_USERS_10: Set<String> = (secrets["SPONSOR_GITHUB_USERS_10"] as? Iterable<String>?)?.toSet() ?: emptySet()
+    val SPONSOR_GITHUB_USERS_15: Set<String> = (secrets["SPONSOR_GITHUB_USERS_15"] as? Iterable<String>?)?.toSet() ?: emptySet()
+    val SPONSOR_GITHUB_USERS_30: Set<String> = (secrets["SPONSOR_GITHUB_USERS_30"] as? Iterable<String>?)?.toSet() ?: emptySet()
+
     fun reloadConfig() {
         config = yaml.load<Map<String, Any?>?>((folders.configYml.takeIfExists()?.readText() ?: "").reader()) ?: mapOf()
         secrets = yaml.load<Map<String, Any?>?>((folders.secretsYml.takeIfExists()?.readText() ?: "").reader()) ?: mapOf()

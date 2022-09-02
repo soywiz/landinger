@@ -32,7 +32,7 @@ suspend fun Application.installLogin(injector: AsyncInjector) {
     suspend fun getCachedSponsor(login: String): SponsorInfo {
         return sponsorInfoCache.getOrPut(login) {
             try {
-                getSponsorInfo(login, config.GH_SPONSOR_TOKEN ?: error("No github configured"))
+                getSponsorInfo(login, config.GH_SPONSOR_TOKEN ?: error("No github configured"), config)
             } catch (e: Throwable) {
                 SponsorInfo(login, 0, DateTime.now())
             }
@@ -93,13 +93,7 @@ suspend fun Application.installLogin(injector: AsyncInjector) {
             val login = userSession?.login ?: ""
             val price = userSession?.price ?: 0
             val platform = userSession?.platform ?: ""
-            val SPONSOR_GITHUB_USERS = config.secrets["SPONSOR_GITHUB_USERS"]
-            val extraSponsored = if (SPONSOR_GITHUB_USERS is Iterable<*>) {
-                login in SPONSOR_GITHUB_USERS
-            } else {
-                false
-            }
-            it.isSponsor = logged && (price > 0 || extraSponsored)
+            it.isSponsor = logged && (price > 0)
             it.logged = logged
             //println("Info: $logged: $price, $extraSponsored, logged=$logged, sponsor=${it.isSponsor}")
             config.secrets
