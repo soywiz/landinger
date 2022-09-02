@@ -48,55 +48,59 @@ class YoutubeService(private val cache: Cache, private val config: ConfigService
     }
 
     suspend fun getYoutubeVideoInfo(ids: List<String>, apiKey: String? = config.secrets["youtube_api_key"]?.toString()): List<YoutubeInfo> {
-        fun getInfoKey(id: String) = "youtube.info.$id"
-        if (apiKey.isNullOrEmpty()) error("API Key not provided")
-        val uncachedIds = ids.filter { !cache.has(getInfoKey(it)) }
+        try {
+            fun getInfoKey(id: String) = "youtube.info.$id"
+            if (apiKey.isNullOrEmpty()) error("API Key not provided")
+            val uncachedIds = ids.filter { !cache.has(getInfoKey(it)) }
 
-        //println("uncachedIds: $uncachedIds")
+            //println("uncachedIds: $uncachedIds")
 
-        if (uncachedIds.isNotEmpty()) {
-            val url = "https://www.googleapis.com/youtube/v3/videos?" + QueryString.encode(
-                mapOf(
-                    "part" to listOf("contentDetails", "snippet"),
-                    "id" to uncachedIds,
-                    "key" to listOf(apiKey)
-                )
-            )
-
-            //println("request=$url")
-            val urlHash = url.toByteArray(UTF8).sha1().hex
-            val result = cache.get("youtube.request.$urlHash") {
-                httpRequestGetString(URL(url))
-            }
-            //val result = MOCKED_REQUEST
-            val resultJson = Json.parse(result)
-            Dynamic {
-                for (item in resultJson["items"].list) {
-                    val id = item["id"].str
-                    val title = item["snippet"]["title"].str
-                    val description = item["snippet"]["description"].str
-                    val publishedDate = DateFormat.parse(item["snippet"]["publishedAt"].str).utc
-                    val duration = parseDuration(item["contentDetails"]["duration"].str)
-                    val thumbnails = item["snippet"]["thumbnails"].entries().map { (key: Any?, value: Any?) ->
-                        YoutubeInfo.Thumbnail(key.str, value["url"].str, value["width"].int, value["height"].int)
-                    }
-                    cache.put(
-                        getInfoKey(id),
-                        YoutubeInfo(
-                            id,
-                            title,
-                            description,
-                            publishedDate.unixMillisLong,
-                            duration.millisecondsLong,
-                            thumbnails
-                        )
+            if (uncachedIds.isNotEmpty()) {
+                val url = "https://www.googleapis.com/youtube/v3/videos?" + QueryString.encode(
+                    mapOf(
+                        "part" to listOf("contentDetails", "snippet"),
+                        "id" to uncachedIds,
+                        "key" to listOf(apiKey)
                     )
+                )
+
+                //println("request=$url")
+                val urlHash = url.toByteArray(UTF8).sha1().hex
+                val result = cache.get("youtube.request.$urlHash") {
+                    httpRequestGetString(URL(url))
+                }
+                //val result = MOCKED_REQUEST
+                val resultJson = Json.parse(result)
+                Dynamic {
+                    for (item in resultJson["items"].list) {
+                        val id = item["id"].str
+                        val title = item["snippet"]["title"].str
+                        val description = item["snippet"]["description"].str
+                        val publishedDate = DateFormat.parse(item["snippet"]["publishedAt"].str).utc
+                        val duration = parseDuration(item["contentDetails"]["duration"].str)
+                        val thumbnails = item["snippet"]["thumbnails"].entries().map { (key: Any?, value: Any?) ->
+                            YoutubeInfo.Thumbnail(key.str, value["url"].str, value["width"].int, value["height"].int)
+                        }
+                        cache.put(
+                            getInfoKey(id),
+                            YoutubeInfo(
+                                id,
+                                title,
+                                description,
+                                publishedDate.unixMillisLong,
+                                duration.millisecondsLong,
+                                thumbnails
+                            )
+                        )
+                    }
                 }
             }
+            //https://www.googleapis.com/youtube/v3/videos?part=contentDetails&part=snippet&id=mfJtWm5UddM&id=fCE7-ofMVbM&key=[YOUR_API_KEY]
+            // -header 'Accept: application/json' \
+            return ids.mapNotNull { cache.getOrNull<YoutubeInfo>(getInfoKey(it)) }
+        } catch (e: Throwable) {
+            return emptyList()
         }
-        //https://www.googleapis.com/youtube/v3/videos?part=contentDetails&part=snippet&id=mfJtWm5UddM&id=fCE7-ofMVbM&key=[YOUR_API_KEY]
-        // -header 'Accept: application/json' \
-        return ids.map { cache.getOrNull<YoutubeInfo>(getInfoKey(it)) }.filterNotNull()
     }
 }
 

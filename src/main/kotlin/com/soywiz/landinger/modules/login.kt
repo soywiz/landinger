@@ -6,6 +6,7 @@ import com.soywiz.krypto.encoding.*
 import io.ktor.application.Application
 import io.ktor.application.call
 import io.ktor.application.install
+import io.ktor.features.*
 import io.ktor.request.uri
 import io.ktor.response.respondRedirect
 import io.ktor.routing.get
@@ -60,6 +61,12 @@ suspend fun Application.installLogin(injector: AsyncInjector) {
     }
     routing {
         println("!! Configured sessions")
+        get("/login/fake") {
+            if (!config.startConfig.debug) throw NotFoundException()
+            val price = call.request.queryParameters["price"]?.toIntOrNull() ?: error("Missing price")
+            call.sessions.set(UserSession("debug-$price", price, "github"))
+            call.respondRedirect(call.sessions.get<LastVisitedPageSession>()?.page ?: "/")
+        }
         get("/login/oauth/authorize") {
             val code = call.request.queryParameters["code"] ?: error("Missing code")
             val GH_CLIENT_ID = config.GH_CLIENT_ID ?: error("No github configured")
@@ -95,6 +102,7 @@ suspend fun Application.installLogin(injector: AsyncInjector) {
             it.isSponsor = logged && (price > 0 || extraSponsored)
             it.logged = logged
             //println("Info: $logged: $price, $extraSponsored, logged=$logged, sponsor=${it.isSponsor}")
+            config.secrets
             it.extraConfig["session"] = mapOf(
                 "logged" to logged,
                 "isSponsor" to it.isSponsor,
@@ -102,6 +110,7 @@ suspend fun Application.installLogin(injector: AsyncInjector) {
                 "price" to price,
                 "platform" to platform
             )
+            it.extraConfig["debug"] = config.startConfig.debug
             //println("pageShown: $logged : $login")
             it.call.sessions.set(LastVisitedPageSession(it.call.request.uri))
         }

@@ -9,11 +9,12 @@ import com.soywiz.landinger.util.yaml
 data class Config(
     var port: Int = System.getenv("VIRTUAL_PORT")?.toIntOrNull() ?: 8080,
     var host: String = "127.0.0.1",
-    var contentDir: String = "content"
+    var contentDir: String = "content",
+    var debug: Boolean = false,
 )
 
 @Singleton
-class ConfigService(val folders: Folders) {
+class ConfigService(val folders: Folders, val startConfig: Config) {
     @Volatile
     var config: Map<String, Any?> = mapOf()
 

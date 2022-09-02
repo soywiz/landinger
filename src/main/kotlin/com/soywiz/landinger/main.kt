@@ -28,6 +28,7 @@ import com.soywiz.korte.dynamic.*
 import com.soywiz.krypto.sha1
 import com.soywiz.landinger.korim.JPEG
 import com.soywiz.landinger.modules.*
+import com.soywiz.landinger.modules.Dynamic.str
 import com.soywiz.landinger.util.*
 import io.ktor.application.ApplicationCall
 import io.ktor.application.call
@@ -79,6 +80,7 @@ suspend fun main(args: Array<String>) {
     cli.registerSwitch<Int>("-p", "--port", desc = "Sets the port for listening") { config.port = it }
     cli.registerSwitch<Boolean>("-g", "--generate", desc = "") { generate = it }
     cli.registerSwitch<Unit>("-h", "--help", desc = "") { showHelp = true }
+    cli.registerSwitch<Unit>("-d", "--debug", desc = "Enable debug mode") { config.debug = true }
     cli.registerDefault(desc = "") { error("Unexpected '$it'") }
 
     cli.parse(params)
@@ -109,6 +111,7 @@ fun serve(config: Config) {
             }
 
             val injector = AsyncInjector().jvmAutomapping()
+            injector.mapInstance(config)
             injector.mapInstance(Folders(File(config.contentDir)))
             val landing = injector.get<LandingServing>()
 
@@ -260,6 +263,9 @@ class LandingServing(
             }
         ),
         extraFilters = listOf(
+            Filter("sha1") {
+                subject.str.sha1().hexLower
+            },
             Filter("default") {
                 when (subject) {
                     null, false, "" -> this.args[0]
