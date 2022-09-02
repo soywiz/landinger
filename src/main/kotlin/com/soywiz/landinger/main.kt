@@ -436,7 +436,8 @@ class LandingServing(
             TeFunction("sponsored") {
                 val price = Dynamic2.accessAny(this.scope.get("session"), "price", mapper).dyn.int
                 val post_sponsor_tier = Dynamic2.accessAny(this.scope.get("post"), "sponsor_tier", mapper).dyn.toIntOrNull()
-                val sponsor_tier = post_sponsor_tier ?: it.getOrNull(0).dyn.toIntOrNull() ?: 1
+                val post_sponsor_tier_2 = Dynamic2.accessAny(this.scope.get("page"), "sponsor_tier", mapper).dyn.toIntOrNull()
+                val sponsor_tier = post_sponsor_tier ?: post_sponsor_tier_2 ?: it.getOrNull(0).dyn.toIntOrNull() ?: 1
                 //println("session=${this.scope.get("session").dyn["price"]}")
                 //println("post_sponsor_tier=${post_sponsor_tier}")
                 //println("sponsorted: price=$price, sponsor_tier=$sponsor_tier")
