@@ -1,9 +1,7 @@
 package com.soywiz.landinger
 
 import com.fasterxml.jackson.module.kotlin.*
-import com.soywiz.klock.DateFormat
-import com.soywiz.klock.DateTime
-import com.soywiz.klock.format
+import com.soywiz.klock.*
 import com.soywiz.klock.jvm.toDate
 import com.soywiz.klock.jvm.toDateTime
 import com.soywiz.korim.bitmap.Bitmap
@@ -56,6 +54,7 @@ import java.io.*
 import java.nio.file.Path
 import java.text.SimpleDateFormat
 import java.util.*
+import java.util.Date
 import kotlin.collections.LinkedHashMap
 
 suspend fun main(args: Array<String>) {
@@ -402,10 +401,19 @@ class LandingServing(
             },
             Filter("date_to_string") {
                 val subject = this.subject
-                when (subject) {
-                    is Date -> subject.toString()
-                    is DateTime -> subject.toStringDefault()
-                    else -> subject.toString()
+                val date: DateTime = when (subject) {
+                    is Date -> subject.toDateTime()
+                    is DateTime -> subject
+                    else -> kotlin.runCatching { DateTime.parse(subject.toString()).utc }.getOrNull() ?: DateTime.EPOCH
+                }
+                try {
+                    if (this.args.isNotEmpty()) {
+                        date.format(this.args[0].str)
+                    } else {
+                        date.toStringDefault()
+                    }
+                } catch (e: Throwable) {
+                    date.toStringDefault()
                 }
             },
             Filter("where_exp") {
@@ -473,10 +481,13 @@ class LandingServing(
             while (true) {
                 doReload.wait()
                 Thread.sleep(50L)
-                println("Reload...")
-                entries.entriesReload()
-                templates.invalidateCache()
-                configService.reloadConfig()
+                println("Reloading...")
+                val time = measureTime {
+                    entries.entriesReload()
+                    templates.invalidateCache()
+                    configService.reloadConfig()
+                }
+                println("Reloaded in $time")
             }
         }.apply { isDaemon = true }.start()
         //folders.content.watchTree { baseFile, path ->

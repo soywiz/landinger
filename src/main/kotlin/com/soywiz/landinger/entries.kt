@@ -165,9 +165,9 @@ data class Entry(
     }
 
     val sponsored by lazy {
-        rawFileContent.contains("\$SPONSOR\$:")
+        mfile.header["sponsor_tier"]?.toIntOrNull()?.compareTo(0) == 1
+            || rawFileContent.contains("\$SPONSOR\$:")
             //|| rawFileContent.contains("{% if sponsored(")
-            || (headers["sponsor_tier"].toIntOrNull()?.compareTo(0) == 1)
     }
 
     override suspend fun dynamic2Get(key: Any?): Any? {
