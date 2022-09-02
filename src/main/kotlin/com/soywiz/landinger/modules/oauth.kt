@@ -118,8 +118,8 @@ suspend fun getSponsorInfo(login: String, access_token: String): SponsorInfo {
     }
     return SponsorInfo(
         login,
-        sponsorPrice,
-        //if (login == "soywiz") +1 else sponsorPrice,
+        //sponsorPrice,
+        if (login == "soywiz") +15 else sponsorPrice,
         DateTime.now()
     )
 }
