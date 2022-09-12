@@ -158,8 +158,12 @@ class Folders(content: File) {
     val collections = content["collections"]
     val static = content["static"]
     val cache = content[".cache"].also { it.mkdirs() }
-    val configYml = content["config.yml"]
+    val configYml = listOf(content["config.yml"], content["_config.yml"])
     val secretsYml = content["secrets.yml"]
+}
+
+fun List<File>.takeIfExists(): File? {
+    return this.firstNotNullOfOrNull { it.takeIfExists() }
 }
 
 fun FileWithFrontMatter.toTemplateContent(): TemplateContent {
@@ -312,12 +316,13 @@ class LandingServing(
                 absPath
             },
             Filter("strip_html") {
-                Jsoup.parse(subject.toString()).text()
+                if (subject == null) "" else Jsoup.parse(subject.toString()).text()
             },
             Filter("truncatewords") {
                 val count = args.getOrNull(0).dyn.toIntOrNull() ?: 10
                 val ellipsis = args.getOrNull(1).dyn.toStringOrNull() ?: "..."
                 subject.toString().splitKeep(Regex("\\W+")).take(count).joinToString("") + ellipsis
+                //subject.toString()
             },
             Filter("slugify") {
                 this.subject.toString().replace("\\W+", "-")
@@ -564,7 +569,7 @@ class LandingServing(
     }
 
     fun buildSiteObject(): Map<String, Any?> {
-        return mapOf(
+        return configService.config + mapOf(
             "config" to configService.config,
             "data" to configService.siteData,
             "collections" to entries.entries.entriesByCategory,

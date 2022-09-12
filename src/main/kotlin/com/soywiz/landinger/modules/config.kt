@@ -2,7 +2,7 @@ package com.soywiz.landinger.modules
 
 import com.soywiz.kds.linkedHashMapOf
 import com.soywiz.korinject.Singleton
-import com.soywiz.landinger.Folders
+import com.soywiz.landinger.*
 import com.soywiz.landinger.util.takeIfExists
 import com.soywiz.landinger.util.yaml
 
