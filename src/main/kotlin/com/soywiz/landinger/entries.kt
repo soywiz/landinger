@@ -3,7 +3,7 @@ package com.soywiz.landinger
 import com.soywiz.klock.*
 import com.soywiz.klock.jvm.toDate
 import com.soywiz.korinject.Singleton
-import com.soywiz.korio.dynamic.KDynamic.Companion.toIntOrNull
+import com.soywiz.korio.dynamic.*
 import com.soywiz.korte.dynamic.Dynamic2Gettable
 import com.soywiz.landinger.util.absoluteUrl
 import com.soywiz.landinger.util.canonicalPermalink
@@ -14,11 +14,12 @@ import io.ktor.http.*
 import java.io.*
 
 class IndexService(val folders: Folders) {
-    fun index(folder: File, category: String): EntriesStore {
+    fun index(folder: File, category: String): EntriesStore = index(listOf(folder), category)
+    fun index(folder: List<File>, category: String): EntriesStore {
         val entries = arrayListOf<Entry>()
         val postRegex = Regex("^(\\d+)-(\\d+)-(\\d+)-(.*)$")
         val time = measureTime {
-            for (file in folder.walk()) {
+            for (file in folder.flatMap { it.walk() }) {
                 if (file.extension == "md" || file.extension == "markdown" || file.extension == "html" || file.extension == "xml") {
                     val mfile = FileWithFrontMatter(file)
                     val header = mfile.header
@@ -165,7 +166,7 @@ data class Entry(
     }
 
     val sponsored by lazy {
-        mfile.header["sponsor_tier"]?.toIntOrNull()?.compareTo(0) == 1
+        mfile.header["sponsor_tier"]?.dyn?.toIntOrNull()?.compareTo(0) == 1
             || rawFileContent.contains("\$SPONSOR\$:")
             //|| rawFileContent.contains("{% if sponsored(")
     }

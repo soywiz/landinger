@@ -14,15 +14,14 @@ import com.soywiz.korinject.jvmAutomapping
 import com.soywiz.korio.dynamic.*
 import com.soywiz.korio.file.std.get
 import com.soywiz.korio.file.std.toVfs
-import com.soywiz.korio.lang.UTF8
-import com.soywiz.korio.lang.substr
-import com.soywiz.korio.lang.toByteArray
+import com.soywiz.korio.lang.*
 import com.soywiz.korio.stream.openSync
 import com.soywiz.korma.geom.Anchor
 import com.soywiz.korma.geom.Rectangle
 import com.soywiz.korma.geom.ScaleMode
 import com.soywiz.korte.*
 import com.soywiz.korte.dynamic.*
+import com.soywiz.korte.util.*
 import com.soywiz.krypto.sha1
 import com.soywiz.landinger.korim.JPEG
 import com.soywiz.landinger.modules.*
@@ -51,6 +50,7 @@ import kotlinx.coroutines.runBlocking
 import org.jsoup.Jsoup
 import org.jsoup.safety.Whitelist
 import java.io.*
+import java.io.FileNotFoundException
 import java.nio.file.Path
 import java.text.SimpleDateFormat
 import java.util.*
@@ -150,11 +150,11 @@ fun serve(config: Config) {
 @Singleton
 class Folders(content: File) {
     val content = content.canonicalFile
-    val layouts = content["layouts"]
-    val includes = content["includes"]
-    val pages = content["pages"]
+    val layouts = listOf(content["layouts"], content["_layouts"])
+    val includes = listOf(content["includes"], content["_includes"])
+    val pages = listOf(content["pages"], content["_pages"])
     val data = content["data"]
-    val posts = content["posts"]
+    val posts = listOf(content["posts"], content["_posts"])
     val collections = content["collections"]
     val static = content["static"]
     val cache = content[".cache"].also { it.mkdirs() }
@@ -220,13 +220,17 @@ class LandingServing(
         }
     }
 
-    class TemplateProviderWithFrontMatter(val path: File) : NewTemplateProvider {
+    class TemplateProviderWithFrontMatter(val paths: List<File>) : NewTemplateProvider {
+        constructor(path: File) : this(listOf(path))
+
         override suspend fun newGet(template: String): TemplateContent? {
             //println("INCLUDE: '$template'")
             for (filePath in listOf(template, "$template.md", "$template.html")) {
-                val file = path.child(filePath)
-                if (file != null && file.exists() && !file.isDirectory) {
-                    return FileWithFrontMatter(file).toTemplateContent()
+                for (path in paths) {
+                    val file = path.child(filePath)
+                    if (file != null && file.exists() && !file.isDirectory) {
+                        return FileWithFrontMatter(file).toTemplateContent()
+                    }
                 }
             }
             return null
@@ -253,13 +257,44 @@ class LandingServing(
         return folders.static.child(path)?.takeIfExists()?.canonicalFile
     }
 
+    val Include = Tag("include", setOf(), null) {
+        val main = chunks.first()
+        val content = main.tag.content
+        val hasExtension = content.contains(".html") || content.contains(".md") || content.contains(".markdown")
+
+        val expr: ExprNode
+        val tr: ListReader<ExprNode.Token>
+        if (hasExtension) {
+            val (fileName, extraTags) = main.tag.content.trim().split(Regex("\\s+"), limit = 2) + listOf("")
+            tr = ExprNode.Token.tokenize(extraTags, main.tag.posContext)
+            expr = ExprNode.LIT(fileName)
+        } else {
+            tr = main.tag.tokens
+            expr = ExprNode.parseExpr(tr)
+        }
+
+        val params = linkedMapOf<String, ExprNode>()
+        while (tr.hasMore) {
+            val id = ExprNode.parseId(tr)
+            tr.expect("=")
+            val expr = ExprNode.parseExpr(tr)
+            params[id] = expr
+        }
+        tr.expectEnd()
+        DefaultBlocks.BlockInclude(expr, params, main.tag.posContext, content)
+    }
+
     val templateConfig = TemplateConfig(
         extraTags = listOf(
             Tag("import_css", setOf(), null) {
                 //val expr = chunks[0].tag.expr
                 val expr = chunks[0].tag.content.trimStart('"').trimEnd('"')
                 DefaultBlocks.BlockText(folders.static.child(expr)!!.readText().compressCss())
-            }
+            },
+            Tag("seo", setOf(), null) {
+                DefaultBlocks.BlockText("<!-- seo -->")
+            },
+            Include
         ),
         extraFilters = listOf(
             Filter("sha1") {
@@ -275,6 +310,17 @@ class LandingServing(
                 val path = subject.toString()
                 val absPath = getAbsoluteUrl(path, context.scope)
                 absPath
+            },
+            Filter("strip_html") {
+                Jsoup.parse(subject.toString()).text()
+            },
+            Filter("truncatewords") {
+                val count = args.getOrNull(0).dyn.toIntOrNull() ?: 10
+                val ellipsis = args.getOrNull(1).dyn.toStringOrNull() ?: "..."
+                subject.toString().splitKeep(Regex("\\W+")).take(count).joinToString("") + ellipsis
+            },
+            Filter("slugify") {
+                this.subject.toString().replace("\\W+", "-")
             },
             Filter("img_srcset") {
                 val path = subject.toString()
@@ -317,6 +363,22 @@ class LandingServing(
                 subject.toString().kramdownToHtml()
             },
             Filter("date_format") {
+                val subject = this.subject
+                val date = when (subject) {
+                    is Date -> subject
+                    is DateTime -> subject.toDate()
+                    else -> parseAnyDate(subject.toString())
+                }
+                //when (subject) {
+                //    is Date -> subject
+                //}
+                if (args.isEmpty()) {
+                    subject.toString()
+                } else {
+                    SimpleDateFormat(args[0].toDynamicString()).format(date ?: Date(0L))
+                }
+            },
+            Filter("date") {
                 val subject = this.subject
                 val date = when (subject) {
                     is Date -> subject
