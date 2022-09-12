@@ -477,7 +477,7 @@ class LandingServing(
                     if (this.args.isNotEmpty()) {
                         date.format(this.args[0].str)
                     } else {
-                        date.toStringDefault()
+                        date.toString(DateFormat("dd MMM YYYY"))
                     }
                 } catch (e: Throwable) {
                     date.toStringDefault()
