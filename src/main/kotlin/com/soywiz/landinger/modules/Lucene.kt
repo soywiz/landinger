@@ -11,7 +11,7 @@ import org.apache.lucene.store.*
 
 class LuceneIndex {
     val analyzer = StandardAnalyzer()
-    val directory = RAMDirectory()
+    val directory = ByteBuffersDirectory()
     val config = IndexWriterConfig(analyzer)
 
     data class DocumentInfo(val id: String, val title: String, val content: String)
