@@ -1,8 +1,8 @@
 package com.soywiz.landinger.util
 
 import com.soywiz.landinger.*
-import io.ktor.application.*
-import io.ktor.features.origin
+import io.ktor.server.application.*
+import io.ktor.server.plugins.*
 import java.io.File
 import java.io.IOException
 

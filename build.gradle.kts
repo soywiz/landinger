@@ -30,11 +30,16 @@ dependencies {
     implementation("org.freemarker:freemarker:2.3.29")
     implementation("com.hubspot.slack:slack-client:1.6")
     implementation("io.ktor:ktor-server-netty:$ktorVersion")
+    implementation("io.ktor:ktor-server-partial-content:$ktorVersion")
+    implementation("io.ktor:ktor-server-forwarded-header:$ktorVersion")
+    implementation("io.ktor:ktor-server-caching-headers:$ktorVersion")
+    implementation("io.ktor:ktor-server-status-pages:$ktorVersion")
+    implementation("io.ktor:ktor-server-sessions:$ktorVersion")
     implementation("io.ktor:ktor-client-core-jvm:$ktorVersion")
     implementation("io.ktor:ktor-client-core-jvm:$ktorVersion")
     implementation("io.ktor:ktor-client-okhttp:$ktorVersion")
     implementation("io.ktor:ktor-client-jackson:$ktorVersion")
-    implementation("io.ktor:ktor-html-builder:$ktorVersion")
+    //implementation("io.ktor:ktor-html-builder:$ktorVersion")
     implementation("com.soywiz.korlibs.klock:klock-jvm:$klockVersion")
     implementation("com.soywiz.korlibs.krypto:krypto-jvm:$kryptoVersion")
     implementation("com.soywiz.korlibs.korte:korte-jvm:$korteVersion")
@@ -85,19 +90,24 @@ tasks {
     //val domain = "programar.ovh"
     //val baseDir = "/home/virtual/seo/programar.ovh"
     val domain = "soywiz.com"
-    val baseDir = "/home/virtual/soywiz/soywiz.com"
-    val baseOut = "$server:$baseDir"
     val contentDir = File(projectDir, "content")
+    val baseDirs = listOf(
+        "/home/virtual/soywiz/soywiz.com",
+        "/home/virtual/korge/blog.korge.org",
+    )
+    val baseOuts = baseDirs.map { "$server:$it" }
 
     val publishDockerCompose by creating {
         doLast {
-            exec { commandLine("scp", file("Dockerfile"), "$baseOut/Dockerfile") }
-            exec { commandLine("scp", file("docker-compose.yml"), "$baseOut/docker-compose.yml") }
-            File(".env").writeText(
-                "VIRTUAL_HOST=$domain\n" +
-                "VIRTUAL_PORT=8080\n"
-            )
-            exec { commandLine("scp", file(".env"), "$baseOut/.env") }
+            for (baseOut in baseOuts) {
+                exec { commandLine("scp", file("Dockerfile"), "$baseOut/Dockerfile") }
+                exec { commandLine("scp", file("docker-compose.yml"), "$baseOut/docker-compose.yml") }
+                File(".env").writeText(
+                    "VIRTUAL_HOST=$domain\n" +
+                        "VIRTUAL_PORT=8080\n"
+                )
+                exec { commandLine("scp", file(".env"), "$baseOut/.env") }
+            }
         }
     }
 
@@ -111,14 +121,18 @@ tasks {
         dependsOn(fatJar)
         //dependsOn(publishContent)
         doLast {
-            exec { commandLine("rsync", "-avz", jarFile, "$baseOut/app/") }
+            for (baseOut in baseOuts) {
+                exec { commandLine("rsync", "-avz", jarFile, "$baseOut/app/") }
+            }
         }
     }
 
     val restartDockerCompose by creating {
         dependsOn(fatJar)
         doLast {
-            exec { commandLine("ssh", server, "/bin/bash", "-c", "'cd $baseDir; docker-compose restart'") }
+            for (baseDir in baseDirs) {
+                exec { commandLine("ssh", server, "/bin/bash", "-c", "'cd $baseDir; docker-compose restart'") }
+            }
         }
     }
 

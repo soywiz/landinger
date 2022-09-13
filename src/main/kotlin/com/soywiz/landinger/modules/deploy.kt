@@ -6,12 +6,10 @@ import com.soywiz.korio.file.std.get
 import com.soywiz.landinger.Folders
 import com.soywiz.landinger.util.exec
 import com.soywiz.landinger.util.generateSshRsaKeyPairToFile
-import io.ktor.application.Application
-import io.ktor.application.call
 import io.ktor.http.ContentType
-import io.ktor.response.respondText
-import io.ktor.routing.route
-import io.ktor.routing.routing
+import io.ktor.server.application.*
+import io.ktor.server.response.*
+import io.ktor.server.routing.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 

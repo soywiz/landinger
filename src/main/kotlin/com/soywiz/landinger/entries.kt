@@ -1,16 +1,12 @@
 package com.soywiz.landinger
 
 import com.soywiz.klock.*
-import com.soywiz.klock.jvm.toDate
-import com.soywiz.korinject.Singleton
+import com.soywiz.korinject.*
 import com.soywiz.korio.dynamic.*
-import com.soywiz.korte.dynamic.Dynamic2Gettable
-import com.soywiz.landinger.util.absoluteUrl
-import com.soywiz.landinger.util.canonicalPermalink
-import com.soywiz.landinger.util.kramdownToHtml
-import com.soywiz.landinger.util.yaml
-import io.ktor.application.*
+import com.soywiz.korte.dynamic.*
+import com.soywiz.landinger.util.*
 import io.ktor.http.*
+import io.ktor.server.application.*
 import java.io.*
 
 class IndexService(val folders: Folders) {

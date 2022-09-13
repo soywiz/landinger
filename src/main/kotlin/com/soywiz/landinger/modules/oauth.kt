@@ -7,6 +7,7 @@ import io.ktor.client.HttpClient
 import io.ktor.client.engine.okhttp.OkHttp
 import io.ktor.client.request.*
 import io.ktor.client.request.forms.*
+import io.ktor.client.statement.*
 import io.ktor.http.*
 import io.ktor.http.content.*
 import java.net.*
@@ -14,21 +15,21 @@ import java.net.*
 private val oauthHttpClient = HttpClient(OkHttp)
 
 suspend fun oauthGetAccessToken(code: String, clientId: String, clientSecret: String): String {
-    val result = oauthHttpClient.post<String>(URL("https://github.com/login/oauth/access_token")) {
-        body = FormDataContent(Parameters.build {
+    val result = oauthHttpClient.post(URL("https://github.com/login/oauth/access_token")) {
+        setBody(FormDataContent(Parameters.build {
             append("client_id", clientId)
             append("client_secret", clientSecret)
             append("code", code)
-        })
-    }
+        }))
+    }.bodyAsText()
     val params = result.parseUrlEncodedParameters()
     return params["access_token"] ?: error("Can't get access token")
 }
 
 suspend fun oauthGetUserLogin(access_token: String): String {
-    val result = oauthHttpClient.get<String>(URL("https://api.github.com/user")) {
+    val result = oauthHttpClient.get(URL("https://api.github.com/user")) {
         header("Authorization", "token $access_token")
-    }
+    }.bodyAsText()
     val data = jsonMapper.readValue<Map<String, Any?>>(result)
     return data["login"].toString()
 }
@@ -36,10 +37,10 @@ suspend fun oauthGetUserLogin(access_token: String): String {
 val jsonMapper = jacksonObjectMapper()
 
 suspend fun graphqlCall(access_token: String, query: String): Map<String, Any?> {
-    val result = oauthHttpClient.post<String>(URL("https://api.github.com/graphql")) {
+    val result = oauthHttpClient.post(URL("https://api.github.com/graphql")) {
         header("Authorization", "bearer $access_token")
-        body = TextContent(jsonMapper.writeValueAsString(mapOf("query" to query)), contentType = ContentType.Any)
-    }
+        setBody(TextContent(jsonMapper.writeValueAsString(mapOf("query" to query)), contentType = ContentType.Any))
+    }.bodyAsText()
     //println("result: $result")
     return jsonMapper.readValue<Map<String, Any?>>(result)
 }

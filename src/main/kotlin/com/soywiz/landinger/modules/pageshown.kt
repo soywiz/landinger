@@ -1,10 +1,9 @@
 package com.soywiz.landinger.modules
 
-import com.soywiz.korinject.Singleton
-import com.soywiz.korio.async.Signal
-import com.soywiz.landinger.Entry
-import io.ktor.application.ApplicationCall
-import io.ktor.util.pipeline.PipelineContext
+import com.soywiz.korinject.*
+import com.soywiz.korio.async.*
+import com.soywiz.landinger.*
+import io.ktor.server.application.*
 
 @Singleton
 class PageShownBus {

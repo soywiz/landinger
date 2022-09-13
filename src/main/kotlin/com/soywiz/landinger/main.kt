@@ -27,24 +27,21 @@ import com.soywiz.landinger.korim.JPEG
 import com.soywiz.landinger.modules.*
 import com.soywiz.landinger.modules.Dynamic.str
 import com.soywiz.landinger.util.*
-import io.ktor.application.ApplicationCall
-import io.ktor.application.call
-import io.ktor.application.install
-import io.ktor.features.*
 import io.ktor.http.CacheControl
 import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.content.CachingOptions
-import io.ktor.request.host
-import io.ktor.request.uri
-import io.ktor.response.respondFile
-import io.ktor.response.respondRedirect
-import io.ktor.response.respondText
-import io.ktor.routing.get
-import io.ktor.routing.route
-import io.ktor.routing.routing
+import io.ktor.server.application.*
 import io.ktor.server.engine.embeddedServer
 import io.ktor.server.netty.Netty
+import io.ktor.server.plugins.*
+import io.ktor.server.plugins.cachingheaders.*
+import io.ktor.server.plugins.forwardedheaders.*
+import io.ktor.server.plugins.partialcontent.*
+import io.ktor.server.plugins.statuspages.*
+import io.ktor.server.request.*
+import io.ktor.server.response.*
+import io.ktor.server.routing.*
 import io.ktor.util.pipeline.PipelineContext
 import kotlinx.coroutines.runBlocking
 import org.jsoup.Jsoup
@@ -94,12 +91,12 @@ suspend fun main(args: Array<String>) {
 fun serve(config: Config) {
     embeddedServer(Netty, port = config.port) {
         runBlocking {
-            install(XForwardedHeaderSupport)
+            install(XForwardedHeaders)
             install(PartialContent) {
                 maxRangeCount = 10
             }
             install(CachingHeaders) {
-                options { outgoingContent ->
+                options { call, outgoingContent ->
                     val contentType = outgoingContent.contentType?.withoutParameters() ?: ContentType.Any
                     when {
                         contentType.match(ContentType.Text.CSS) -> CachingOptions(CacheControl.MaxAge(maxAgeSeconds = 2 * 60 * 60))
@@ -116,24 +113,24 @@ fun serve(config: Config) {
 
             installLogin(injector)
             installDeploy(injector)
-            routing {
-                install(StatusPages) {
-                    exception<NotFoundException> { cause ->
-                        try {
-                            landing.serveEntry("/404", call, cause, code = HttpStatusCode.NotFound)
-                        } catch (e: Throwable) {
-                            call.respondText("Not Found", ContentType.Text.Html, HttpStatusCode.NotFound)
-                        }
-                    }
-                    exception<HttpRedirectException> { cause ->
-                        call.respondRedirect(cause.url, cause.permanent)
-                    }
-                    exception<Throwable> { cause ->
-                        cause.printStackTrace()
-                        System.err.println(cause.toString())
-                        call.respondText("Internal Server Error", ContentType.Text.Plain, HttpStatusCode.InternalServerError)
+            install(StatusPages) {
+                exception<NotFoundException> { call, cause ->
+                    try {
+                        landing.serveEntry("/404", call, cause, code = HttpStatusCode.NotFound)
+                    } catch (e: Throwable) {
+                        call.respondText("Not Found", ContentType.Text.Html, HttpStatusCode.NotFound)
                     }
                 }
+                exception<HttpRedirectException> { call, cause ->
+                    call.respondRedirect(cause.url, cause.permanent)
+                }
+                exception<Throwable> { call, cause ->
+                    cause.printStackTrace()
+                    System.err.println(cause.toString())
+                    call.respondText("Internal Server Error", ContentType.Text.Plain, HttpStatusCode.InternalServerError)
+                }
+            }
+            routing {
                 route("/") {
                     get("/") {
                         landing.servePost(this, "")
@@ -613,8 +610,8 @@ class LandingServing(
         val finalText = text.forSponsor(page.isSponsor)
 
         call.respondText(
-            finalText, when {
-                entry?.isXml == true -> ContentType.Text.Xml
+            finalText, when (entry?.isXml) {
+                true -> ContentType.Text.Xml
                 else -> ContentType.Text.Html
             }, code
         )
