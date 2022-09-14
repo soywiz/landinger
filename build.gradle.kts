@@ -89,24 +89,21 @@ tasks {
     val server = "soywiz"
     //val domain = "programar.ovh"
     //val baseDir = "/home/virtual/seo/programar.ovh"
-    val domain = "soywiz.com"
-    val contentDir = File(projectDir, "content")
-    val baseDirs = listOf(
-        "/home/virtual/soywiz/soywiz.com",
-        "/home/virtual/korge/blog.korge.org",
+    data class Entry(val domain: String, val baseDir: String) {
+        val baseOut = "$server:$baseDir"
+    }
+    val entries = listOf(
+        Entry("soywiz.com", "/home/virtual/soywiz/soywiz.com"),
+        Entry("blog.korge.org", "/home/virtual/korge/blog.korge.org"),
     )
-    val baseOuts = baseDirs.map { "$server:$it" }
 
     val publishDockerCompose by creating {
         doLast {
-            for (baseOut in baseOuts) {
-                exec { commandLine("scp", file("Dockerfile"), "$baseOut/Dockerfile") }
-                exec { commandLine("scp", file("docker-compose.yml"), "$baseOut/docker-compose.yml") }
-                File(".env").writeText(
-                    "VIRTUAL_HOST=$domain\n" +
-                        "VIRTUAL_PORT=8080\n"
-                )
-                exec { commandLine("scp", file(".env"), "$baseOut/.env") }
+            for (entry in entries) {
+                exec { commandLine("scp", file("Dockerfile"), "${entry.baseOut}/Dockerfile") }
+                exec { commandLine("scp", file("docker-compose.yml"), "${entry.baseOut}/docker-compose.yml") }
+                file(".env").writeText("VIRTUAL_HOST=${entry.domain}\nVIRTUAL_PORT=8080\n")
+                exec { commandLine("scp", file(".env"), "${entry.baseOut}/.env") }
             }
         }
     }
@@ -121,8 +118,8 @@ tasks {
         dependsOn(fatJar)
         //dependsOn(publishContent)
         doLast {
-            for (baseOut in baseOuts) {
-                exec { commandLine("rsync", "-avz", jarFile, "$baseOut/app/") }
+            for (entry in entries) {
+                exec { commandLine("rsync", "-avz", jarFile, "${entry.baseOut}/app/") }
             }
         }
     }
@@ -130,8 +127,8 @@ tasks {
     val restartDockerCompose by creating {
         dependsOn(fatJar)
         doLast {
-            for (baseDir in baseDirs) {
-                exec { commandLine("ssh", server, "/bin/bash", "-c", "'cd $baseDir; docker-compose restart'") }
+            for (entry in entries) {
+                exec { commandLine("ssh", server, "/bin/bash", "-c", "'cd ${entry.baseDir}; docker-compose restart'") }
             }
         }
     }

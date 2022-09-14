@@ -14,7 +14,7 @@ services:
       - ${VIRTUAL_PORT}
     environment:
       VIRTUAL_HOST: ${VIRTUAL_HOST}
-      VIRTUAL_PORT: ${VIRTUAL_HOST}
+      VIRTUAL_PORT: ${VIRTUAL_PORT}
       LETSENCRYPT_EMAIL: soywiz@gmail.com
       LETSENCRYPT_HOST: ${VIRTUAL_HOST}
 networks:
