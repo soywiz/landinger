@@ -55,7 +55,7 @@ suspend fun Application.installDeploy(injector: AsyncInjector) {
                                 if (gitFetch.success) {
                                     output.append(
                                         exec(
-                                            arrayOf("git", "reset", "--hard", "origin/master"),
+                                            arrayOf("git", "reset", "--hard", "origin/main"),
                                             gitExtraEnvs,
                                             dir = folders.content
                                         )
