@@ -138,6 +138,9 @@ fun serve(config: Config) {
                     get("/{permalink...}") {
                         landing.servePost(this, call.request.uri)
                     }
+                    get("/{permalink...}/") {
+                        landing.servePost(this, call.request.uri)
+                    }
                 }
             }
         }
