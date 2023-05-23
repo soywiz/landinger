@@ -466,6 +466,15 @@ class LandingServing(
                 }
                 DateFormat.FORMAT1.format(date)
             },
+            Filter("date_to_xmlschema") {
+                val subject = this.subject
+                val date: DateTime = when (subject) {
+                    is Date -> subject.toDateTime()
+                    is DateTime -> subject
+                    else -> parseAnyDate(subject.toString())?.toDateTime() ?: DateTime.EPOCH
+                }
+                DateFormat.FORMAT1.format(date)
+            },
             Filter("date_to_string") {
                 val subject = this.subject
                 val date: DateTime = when (subject) {
@@ -497,6 +506,12 @@ class LandingServing(
                         itemExpr.eval(ctx).toDynamicBool()
                     }
                 }
+            },
+            Filter("xml_escape") {
+                this.subject.toString()
+            },
+            Filter("remove") {
+                this.subject.toString().replace(this.args.firstOrNull()?.toString() ?: "", "")
             }
         ),
         extraFunctions = listOf(

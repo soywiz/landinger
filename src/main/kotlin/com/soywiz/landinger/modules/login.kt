@@ -41,9 +41,11 @@ suspend fun Application.installLogin(injector: AsyncInjector) {
         }
     }
 
+    val sitePrefix = config.config["SITE_PREFIX"]?.toString() ?: "https://soywiz.com/"
+
     config.extraConfig["LOGIN_URL"] = object {
         @Suppress("unused")
-        val github: String get() = "https://github.com/login/oauth/authorize?client_id=${config.GH_CLIENT_ID}&scope=read:user&redirect_uri=https://soywiz.com/login/oauth/authorize"
+        val github: String get() = "https://github.com/login/oauth/authorize?client_id=${config.GH_CLIENT_ID}&scope=read:user&redirect_uri=${sitePrefix}login/oauth/authorize"
     }
 
     install(Sessions) {
