@@ -45,7 +45,7 @@ import io.ktor.server.routing.*
 import io.ktor.util.pipeline.PipelineContext
 import kotlinx.coroutines.runBlocking
 import org.jsoup.Jsoup
-import org.jsoup.safety.Whitelist
+import org.jsoup.safety.*
 import java.io.*
 import java.io.FileNotFoundException
 import java.nio.file.Path
@@ -340,7 +340,7 @@ class LandingServing(
                 )
             },
             Filter("excerpt") {
-                Jsoup.clean(subject.toString().substr(0, 200), Whitelist.relaxed())
+                Jsoup.clean(subject.toString().substr(0, 200), Safelist.relaxed())
             },
             Filter("eval_template") {
                 //fun Template.Scope.root(): Template.Scope = this?.parent?.root() ?: this

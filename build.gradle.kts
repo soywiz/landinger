@@ -1,7 +1,7 @@
 import org.gradle.kotlin.dsl.*
 
 plugins {
-    kotlin("jvm") version "1.7.21"
+    kotlin("jvm") version libs.versions.kotlin.get()
     application
 }
 group = "com.soywiz.landinger"
@@ -21,53 +21,49 @@ val kminiormVersion: String by project
 val ktorVersion: String by project
 
 dependencies {
-    implementation("io.methvin:directory-watcher:0.16.1")
-    implementation("org.apache.lucene:lucene-core:9.3.0")
-    implementation("org.apache.lucene:lucene-queryparser:9.3.0")
-    implementation("com.vladsch.flexmark:flexmark-all:0.64.0")
-    implementation("org.yaml:snakeyaml:1.30")
+    implementation(libs.directory.watcher)
+    implementation(libs.lucene.core)
+    implementation(libs.lucene.queryparser)
+    implementation(libs.flexmark.all)
+    implementation(libs.snakeyaml)
     implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8")
-    implementation("org.freemarker:freemarker:2.3.31")
-    implementation("com.hubspot.slack:slack-client:1.12")
-    implementation("io.ktor:ktor-server-netty:$ktorVersion")
-    implementation("io.ktor:ktor-server-partial-content:$ktorVersion")
-    implementation("io.ktor:ktor-server-forwarded-header:$ktorVersion")
-    implementation("io.ktor:ktor-server-caching-headers:$ktorVersion")
-    implementation("io.ktor:ktor-server-status-pages:$ktorVersion")
-    implementation("io.ktor:ktor-server-sessions:$ktorVersion")
-    implementation("io.ktor:ktor-client-core-jvm:$ktorVersion")
-    implementation("io.ktor:ktor-client-core-jvm:$ktorVersion")
-    implementation("io.ktor:ktor-client-okhttp:$ktorVersion")
-    implementation("io.ktor:ktor-client-jackson:$ktorVersion")
-    //implementation("io.ktor:ktor-html-builder:$ktorVersion")
-    implementation("com.soywiz.korlibs.klock:klock-jvm:$klockVersion")
-    implementation("com.soywiz.korlibs.krypto:krypto-jvm:$kryptoVersion")
-    implementation("com.soywiz.korlibs.korte:korte-jvm:$korteVersion")
-    //implementation("com.soywiz.korlibs.korte:korte-korio-jvm:$korteVersion")
-    implementation("com.soywiz.korlibs.korim:korim-jvm:$korimVersion")
-    implementation("com.soywiz.korlibs.korinject:korinject-jvm:$korinjectVersion")
-    implementation("com.soywiz.korlibs.kminiorm:kminiorm-jvm:$kminiormVersion")
-    implementation("com.soywiz.korlibs.kminiorm:kminiorm-jdbc-jvm:$kminiormVersion")
-    implementation("org.xerial:sqlite-jdbc:3.39.3.0")
-    implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.13.4")
-    implementation("ch.qos.logback:logback-classic:1.4.0")
-    implementation("com.yahoo.platform.yui:yuicompressor:2.4.8")
-
-    testImplementation("junit:junit:4.13.2")
+    implementation(libs.freemarker)
+    implementation(libs.slack.client)
+    implementation(libs.ktor.server.netty)
+    implementation(libs.ktor.server.partial.content)
+    implementation(libs.ktor.server.forwarded.header)
+    implementation(libs.ktor.server.caching.headers)
+    implementation(libs.ktor.server.status.pages)
+    implementation(libs.ktor.server.sessions)
+    implementation(libs.ktor.client.core.jvm)
+    implementation(libs.ktor.client.okhttp)
+    implementation(libs.ktor.client.jackson)
+    implementation(libs.klock)
+    implementation(libs.krypto)
+    implementation(libs.korte)
+    implementation(libs.korim)
+    implementation(libs.korinject)
+    implementation(libs.kminiorm)
+    implementation(libs.kminiorm.jdbc)
+    implementation(libs.sqlite.jdbc)
+    implementation(libs.jackson.module.kotlin)
+    implementation(libs.logback.classic)
+    implementation(libs.yuicompressor)
+    testImplementation(libs.junit)
     testImplementation("org.jetbrains.kotlin:kotlin-test")
     testImplementation("org.jetbrains.kotlin:kotlin-test-junit")
 }
 
 tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile> {
     kotlinOptions {
-        jvmTarget = "1.8"
+        //jvmTarget = "1.8"
     }
 }
 
 val baseMainClassName = "com.soywiz.landinger.MainKt"
 
 application {
-    mainClassName = baseMainClassName
+    mainClass = baseMainClassName
     //applicationDefaultJvmArgs = listOf("--help")
 }
 

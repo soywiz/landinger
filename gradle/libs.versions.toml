@@ -1,0 +1,35 @@
+[versions]
+kotlin = "1.9.21"
+ktor = "2.3.7"
+korlibs = "3.1.0"
+kminiorm = "0.10.2"
+
+[libraries]
+directory-watcher = { module = "io.methvin:directory-watcher", version = "0.16.1" }
+lucene-core = { module = "org.apache.lucene:lucene-core", version = "9.3.0" }
+lucene-queryparser = { module = "org.apache.lucene:lucene-queryparser", version = "9.3.0" }
+flexmark-all = { module = "com.vladsch.flexmark:flexmark-all", version = "0.64.8" }
+snakeyaml = { module = "org.yaml:snakeyaml", version = "2.0" }
+freemarker = { module = "org.freemarker:freemarker", version = "2.3.31" }
+slack-client = { module = "com.hubspot.slack:slack-client", version = "1.12" }
+ktor-server-netty = { module = "io.ktor:ktor-server-netty", version.ref = "ktor" }
+ktor-server-partial-content = { module = "io.ktor:ktor-server-partial-content", version.ref = "ktor" }
+ktor-server-forwarded-header = { module = "io.ktor:ktor-server-forwarded-header", version.ref = "ktor" }
+ktor-server-caching-headers = { module = "io.ktor:ktor-server-caching-headers", version.ref = "ktor" }
+ktor-server-status-pages = { module = "io.ktor:ktor-server-status-pages", version.ref = "ktor" }
+ktor-server-sessions = { module = "io.ktor:ktor-server-sessions", version.ref = "ktor" }
+ktor-client-core-jvm = { module = "io.ktor:ktor-client-core-jvm", version.ref = "ktor" }
+ktor-client-okhttp = { module = "io.ktor:ktor-client-okhttp", version.ref = "ktor" }
+ktor-client-jackson = { module = "io.ktor:ktor-client-jackson", version.ref = "ktor" }
+klock = { module = "com.soywiz.korlibs.klock:klock-jvm", version.ref = "korlibs" }
+krypto = { module = "com.soywiz.korlibs.krypto:krypto-jvm", version.ref = "korlibs" }
+korte = { module = "com.soywiz.korlibs.korte:korte-jvm", version.ref = "korlibs" }
+korim = { module = "com.soywiz.korlibs.korim:korim-jvm", version.ref = "korlibs" }
+korinject = { module = "com.soywiz.korlibs.korinject:korinject-jvm", version.ref = "korlibs" }
+kminiorm = { module = "com.soywiz.korlibs.kminiorm:kminiorm-jvm", version.ref = "kminiorm" }
+kminiorm-jdbc = { module = "com.soywiz.korlibs.kminiorm:kminiorm-jdbc-jvm", version.ref = "kminiorm" }
+sqlite-jdbc = { module = "org.xerial:sqlite-jdbc", version = "3.44.1.0" }
+jackson-module-kotlin = { module = "com.fasterxml.jackson.module:jackson-module-kotlin", version = "2.13.4" }
+logback-classic = { module = "ch.qos.logback:logback-classic", version = "1.4.0" }
+yuicompressor = { module = "com.yahoo.platform.yui:yuicompressor", version = "2.4.8" }
+junit = { module = "junit:junit", version = "4.13.2" }
