@@ -1,0 +1,7 @@
+[*]
+tab_width = 4
+end_of_line = lf
+
+[*.kt]
+ij_kotlin_name_count_to_use_star_import = 1
+ij_kotlin_name_count_to_use_star_import_for_members = 1

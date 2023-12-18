@@ -65,6 +65,7 @@ val baseMainClassName = "com.soywiz.landinger.MainKt"
 application {
     mainClass = baseMainClassName
     //applicationDefaultJvmArgs = listOf("--help")
+    applicationDefaultJvmArgs = listOf("-Djava.awt.headless=true")
 }
 
 tasks {

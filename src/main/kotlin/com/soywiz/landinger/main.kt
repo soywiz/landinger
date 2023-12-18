@@ -1,39 +1,29 @@
 package com.soywiz.landinger
 
-import com.fasterxml.jackson.module.kotlin.*
 import com.soywiz.klock.*
-import com.soywiz.klock.jvm.toDate
-import com.soywiz.klock.jvm.toDateTime
-import com.soywiz.korim.bitmap.Bitmap
-import com.soywiz.korim.bitmap.Bitmap32
-import com.soywiz.korim.bitmap.context2d
+import com.soywiz.klock.DateFormat
+import com.soywiz.klock.jvm.*
+import com.soywiz.korim.bitmap.*
 import com.soywiz.korim.format.*
-import com.soywiz.korinject.AsyncInjector
-import com.soywiz.korinject.Singleton
-import com.soywiz.korinject.jvmAutomapping
+import com.soywiz.korinject.*
 import com.soywiz.korio.dynamic.*
-import com.soywiz.korio.file.std.get
-import com.soywiz.korio.file.std.toVfs
+import com.soywiz.korio.file.std.*
 import com.soywiz.korio.lang.*
-import com.soywiz.korio.stream.openSync
-import com.soywiz.korma.geom.Anchor
-import com.soywiz.korma.geom.Rectangle
-import com.soywiz.korma.geom.ScaleMode
+import com.soywiz.korio.stream.*
+import com.soywiz.korma.geom.*
 import com.soywiz.korte.*
 import com.soywiz.korte.dynamic.*
 import com.soywiz.korte.util.*
-import com.soywiz.krypto.sha1
-import com.soywiz.landinger.korim.JPEG
+import com.soywiz.krypto.*
+import com.soywiz.landinger.korim.*
 import com.soywiz.landinger.modules.*
 import com.soywiz.landinger.modules.Dynamic.str
 import com.soywiz.landinger.util.*
-import io.ktor.http.CacheControl
-import io.ktor.http.ContentType
-import io.ktor.http.HttpStatusCode
-import io.ktor.http.content.CachingOptions
+import io.ktor.http.*
+import io.ktor.http.content.*
 import io.ktor.server.application.*
-import io.ktor.server.engine.embeddedServer
-import io.ktor.server.netty.Netty
+import io.ktor.server.engine.*
+import io.ktor.server.netty.*
 import io.ktor.server.plugins.*
 import io.ktor.server.plugins.cachingheaders.*
 import io.ktor.server.plugins.forwardedheaders.*
@@ -42,20 +32,19 @@ import io.ktor.server.plugins.statuspages.*
 import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
-import io.ktor.util.pipeline.PipelineContext
-import kotlinx.coroutines.runBlocking
-import org.jsoup.Jsoup
+import io.ktor.util.pipeline.*
+import kotlinx.coroutines.*
+import org.jsoup.*
 import org.jsoup.safety.*
 import java.io.*
 import java.io.FileNotFoundException
-import java.nio.file.Path
-import java.text.SimpleDateFormat
-import java.util.*
+import java.text.*
 import java.util.Date
-import kotlin.collections.LinkedHashMap
+import kotlin.collections.*
 
 suspend fun main(args: Array<String>) {
-    System.setProperty("java.awt.headless", "false")
+    //System.setProperty("java.awt.headless", "false")
+    System.setProperty("java.awt.headless", "true")
 
     //luceneIndex.search("hello")
     val params1 = System.getProperty("landinger.args")?.toString()?.let { CliParser.parseString(it) }
