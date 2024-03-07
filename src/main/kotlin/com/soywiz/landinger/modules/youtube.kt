@@ -2,12 +2,12 @@ package com.soywiz.landinger.modules
 
 import com.fasterxml.jackson.annotation.JsonIgnore
 import com.soywiz.klock.*
-import com.soywiz.korinject.Singleton
-import com.soywiz.korio.lang.UTF8
-import com.soywiz.korio.lang.toByteArray
-import com.soywiz.korio.net.QueryString
-import com.soywiz.korio.serialization.json.Json
-import com.soywiz.krypto.sha1
+import korlibs.inject.Singleton
+import korlibs.io.lang.UTF8
+import korlibs.io.lang.toByteArray
+import korlibs.io.net.QueryString
+import korlibs.io.serialization.json.Json
+import korlibs.crypto.sha1
 import io.ktor.client.*
 import io.ktor.client.engine.okhttp.*
 import java.net.URL

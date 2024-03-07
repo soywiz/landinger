@@ -1,10 +1,10 @@
 package com.soywiz.landinger.modules
 
-import com.soywiz.kds.linkedHashMapOf
-import com.soywiz.korinject.Singleton
+import korlibs.inject.Singleton
 import com.soywiz.landinger.*
 import com.soywiz.landinger.util.takeIfExists
 import com.soywiz.landinger.util.yaml
+import korlibs.datastructure.*
 
 data class Config(
     var port: Int = System.getenv("VIRTUAL_PORT")?.toIntOrNull() ?: 8080,

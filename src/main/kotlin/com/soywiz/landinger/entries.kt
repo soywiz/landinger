@@ -1,9 +1,9 @@
 package com.soywiz.landinger
 
 import com.soywiz.klock.*
-import com.soywiz.korinject.*
-import com.soywiz.korio.dynamic.*
-import com.soywiz.korte.dynamic.*
+import korlibs.inject.*
+import korlibs.io.dynamic.*
+import korlibs.template.dynamic.*
 import com.soywiz.landinger.util.*
 import io.ktor.http.*
 import io.ktor.server.application.*
@@ -156,7 +156,7 @@ data class Entry(
     val pagination_list: String?,
     val pagination_size: Int?,
     val headers: Map<String, Any?>
-) : Dynamic2Gettable {
+) : KorteDynamic2Gettable {
     init {
         check(permalink == permalink.canonicalPermalink())
     }

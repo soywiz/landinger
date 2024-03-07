@@ -1,7 +1,7 @@
 package com.soywiz.landinger.modules
 
-import com.soywiz.korinject.*
-import com.soywiz.korio.async.*
+import korlibs.inject.*
+import korlibs.io.async.*
 import com.soywiz.landinger.*
 import io.ktor.server.application.*
 

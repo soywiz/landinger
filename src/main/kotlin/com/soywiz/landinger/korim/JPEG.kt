@@ -1,14 +1,14 @@
 package com.soywiz.landinger.korim
 
-import com.soywiz.kmem.ByteArrayBuilder
-import com.soywiz.kmem.UByteArrayInt
-import com.soywiz.kmem.asByteArray
-import com.soywiz.korim.bitmap.Bitmap32
-import com.soywiz.korim.color.RGBA
-import com.soywiz.korim.color.decodeToBitmap32
-import com.soywiz.korim.format.*
-import com.soywiz.korio.lang.invalidOp
-import com.soywiz.korio.stream.*
+import korlibs.memory.ByteArrayBuilder
+import korlibs.memory.UByteArrayInt
+import korlibs.memory.asByteArray
+import korlibs.image.bitmap.Bitmap32
+import korlibs.image.color.RGBA
+import korlibs.image.color.decodeToBitmap32
+import korlibs.image.format.*
+import korlibs.io.lang.invalidOp
+import korlibs.io.stream.*
 import kotlin.math.ceil
 import kotlin.math.floor
 

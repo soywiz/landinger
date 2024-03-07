@@ -1,11 +1,11 @@
 package com.soywiz.landinger.modules
 
-import com.soywiz.klock.DateTime
-import com.soywiz.klock.TimeSpan
-import com.soywiz.klock.days
+import korlibs.time.DateTime
+import korlibs.time.TimeSpan
+import korlibs.time.days
 import com.soywiz.kminiorm.*
 import com.soywiz.kminiorm.dialect.SqliteDialect
-import com.soywiz.korinject.Singleton
+import korlibs.inject.Singleton
 import com.soywiz.landinger.Folders
 import java.io.File
 import kotlin.reflect.KClass

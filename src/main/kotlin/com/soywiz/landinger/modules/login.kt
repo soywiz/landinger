@@ -1,8 +1,8 @@
 package com.soywiz.landinger.modules
 
 import com.soywiz.klock.DateTime
-import com.soywiz.korinject.AsyncInjector
-import com.soywiz.krypto.encoding.*
+import korlibs.inject.AsyncInjector
+import korlibs.encoding.*
 import io.ktor.server.application.*
 import io.ktor.server.plugins.*
 import io.ktor.server.request.*

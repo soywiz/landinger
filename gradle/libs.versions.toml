@@ -1,7 +1,7 @@
 [versions]
 kotlin = "2.0.0-Beta4"
 ktor = "2.3.7"
-korlibs = "3.1.0"
+korlibs = "5.3.2"
 kminiorm = "0.10.2"
 
 [libraries]
@@ -21,11 +21,7 @@ ktor-server-sessions = { module = "io.ktor:ktor-server-sessions", version.ref = 
 ktor-client-core-jvm = { module = "io.ktor:ktor-client-core-jvm", version.ref = "ktor" }
 ktor-client-okhttp = { module = "io.ktor:ktor-client-okhttp", version.ref = "ktor" }
 ktor-client-jackson = { module = "io.ktor:ktor-client-jackson", version.ref = "ktor" }
-klock = { module = "com.soywiz.korlibs.klock:klock-jvm", version.ref = "korlibs" }
-krypto = { module = "com.soywiz.korlibs.krypto:krypto-jvm", version.ref = "korlibs" }
-korte = { module = "com.soywiz.korlibs.korte:korte-jvm", version.ref = "korlibs" }
-korim = { module = "com.soywiz.korlibs.korim:korim-jvm", version.ref = "korlibs" }
-korinject = { module = "com.soywiz.korlibs.korinject:korinject-jvm", version.ref = "korlibs" }
+korge-core = { module = "com.soywiz.korge:korge-core-jvm", version.ref = "korlibs" }
 kminiorm = { module = "com.soywiz.korlibs.kminiorm:kminiorm-jvm", version.ref = "kminiorm" }
 kminiorm-jdbc = { module = "com.soywiz.korlibs.kminiorm:kminiorm-jdbc-jvm", version.ref = "kminiorm" }
 sqlite-jdbc = { module = "org.xerial:sqlite-jdbc", version = "3.44.1.0" }

@@ -1,7 +1,7 @@
 package com.soywiz.landinger.util
 
-import com.soywiz.kds.reader
-import com.soywiz.korio.util.reader
+import korlibs.datastructure.reader
+import korlibs.io.util.reader
 import kotlin.reflect.KClass
 
 class CliParser(val title: String = "CLI") {

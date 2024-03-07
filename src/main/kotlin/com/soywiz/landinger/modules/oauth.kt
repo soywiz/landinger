@@ -2,7 +2,7 @@ package com.soywiz.landinger.modules
 
 import com.fasterxml.jackson.module.kotlin.*
 import com.soywiz.klock.*
-import com.soywiz.korio.lang.*
+import korlibs.io.lang.*
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.okhttp.OkHttp
 import io.ktor.client.request.*

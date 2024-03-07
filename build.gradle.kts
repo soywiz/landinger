@@ -12,14 +12,6 @@ repositories {
     mavenCentral()
 }
 
-val klockVersion: String by project
-val korteVersion: String by project
-val korinjectVersion: String by project
-val kryptoVersion: String by project
-val korimVersion: String by project
-val kminiormVersion: String by project
-val ktorVersion: String by project
-
 dependencies {
     implementation(libs.directory.watcher)
     implementation(libs.lucene.core)
@@ -38,11 +30,7 @@ dependencies {
     implementation(libs.ktor.client.core.jvm)
     implementation(libs.ktor.client.okhttp)
     implementation(libs.ktor.client.jackson)
-    implementation(libs.klock)
-    implementation(libs.krypto)
-    implementation(libs.korte)
-    implementation(libs.korim)
-    implementation(libs.korinject)
+    implementation(libs.korge.core)
     implementation(libs.kminiorm)
     implementation(libs.kminiorm.jdbc)
     implementation(libs.sqlite.jdbc)

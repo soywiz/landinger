@@ -1,6 +1,6 @@
 package com.soywiz.landinger.util
 
-import com.soywiz.korio.lang.*
+import korlibs.io.lang.*
 import io.ktor.util.*
 import io.methvin.watcher.*
 import java.io.*

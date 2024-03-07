@@ -1,8 +1,8 @@
 package com.soywiz.landinger.modules
 
-import com.soywiz.korinject.AsyncInjector
-import com.soywiz.korio.async.AsyncThread
-import com.soywiz.korio.file.std.get
+import korlibs.inject.AsyncInjector
+import korlibs.io.async.AsyncThread
+import korlibs.io.file.std.get
 import com.soywiz.landinger.Folders
 import com.soywiz.landinger.util.exec
 import com.soywiz.landinger.util.generateSshRsaKeyPairToFile

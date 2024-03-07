@@ -3,18 +3,18 @@ package com.soywiz.landinger
 import com.soywiz.klock.*
 import com.soywiz.klock.DateFormat
 import com.soywiz.klock.jvm.*
-import com.soywiz.korim.bitmap.*
-import com.soywiz.korim.format.*
-import com.soywiz.korinject.*
-import com.soywiz.korio.dynamic.*
-import com.soywiz.korio.file.std.*
-import com.soywiz.korio.lang.*
-import com.soywiz.korio.stream.*
-import com.soywiz.korma.geom.*
-import com.soywiz.korte.*
-import com.soywiz.korte.dynamic.*
-import com.soywiz.korte.util.*
-import com.soywiz.krypto.*
+import korlibs.image.bitmap.*
+import korlibs.image.format.*
+import korlibs.inject.*
+import korlibs.io.dynamic.*
+import korlibs.io.file.std.*
+import korlibs.io.lang.*
+import korlibs.io.stream.*
+import korlibs.math.geom.*
+import korlibs.template.*
+import korlibs.template.dynamic.*
+import korlibs.template.util.*
+import korlibs.crypto.*
 import com.soywiz.landinger.korim.*
 import com.soywiz.landinger.modules.*
 import com.soywiz.landinger.modules.Dynamic.str
@@ -155,9 +155,9 @@ fun List<File>.takeIfExists(): File? {
     return this.firstNotNullOfOrNull { it.takeIfExists() }
 }
 
-fun FileWithFrontMatter.toTemplateContent(): TemplateContent {
+fun FileWithFrontMatter.toTemplateContent(): KorteTemplateContent {
     //println("rawFileContent: $rawFileContent")
-    return TemplateContent(
+    return KorteTemplateContent(
         rawFileContent, when {
             isMarkDown -> "markdown"
             isXml -> "xml"
@@ -206,17 +206,17 @@ class LandingServing(
     val youtube: YoutubeService,
     val cache: Cache
 ) {
-    val templateProvider = object : NewTemplateProvider {
-        override suspend fun newGet(template: String): TemplateContent? {
+    val templateProvider = object : KorteNewTemplateProvider {
+        override suspend fun newGet(template: String): KorteTemplateContent? {
             val entry = entries.entries[template] ?: return null
             return entry.mfile.toTemplateContent()
         }
     }
 
-    class TemplateProviderWithFrontMatter(val paths: List<File>) : NewTemplateProvider {
+    class TemplateProviderWithFrontMatter(val paths: List<File>) : KorteNewTemplateProvider {
         constructor(path: File) : this(listOf(path))
 
-        override suspend fun newGet(template: String): TemplateContent? {
+        override suspend fun newGet(template: String): KorteTemplateContent? {
             //println("INCLUDE: '$template'")
             for (filePath in listOf(template, "$template.md", "$template.html")) {
                 for (path in paths) {
@@ -240,102 +240,102 @@ class LandingServing(
     //    }
     //}
 
-    fun getAbsoluteUrl(url: String, scope: Template.Scope): String {
+    fun getAbsoluteUrl(url: String, scope: KorteTemplate.Scope): String {
         return runBlocking { getAbsoluteUrl(url, scope.get("_call") as ApplicationCall) }
     }
 
-    private val templateConfig2: TemplateConfig get() = templateConfig
+    private val templateConfig2: KorteTemplateConfig get() = templateConfig
 
     fun getAbsoluteFile(path: String): File? {
         return folders.static.child(path)?.takeIfExists()?.canonicalFile
     }
 
-    val Include = Tag("include", setOf(), null) {
+    val Include = KorteTag("include", setOf(), null) {
         val main = chunks.first()
         val content = main.tag.content
         val hasExtension = content.contains(".html") || content.contains(".md") || content.contains(".markdown")
 
-        val expr: ExprNode
-        val tr: ListReader<ExprNode.Token>
+        val expr: KorteExprNode
+        val tr: KorteListReader<KorteExprNode.Token>
         if (hasExtension) {
             val (fileName, extraTags) = main.tag.content.trim().split(Regex("\\s+"), limit = 2) + listOf("")
-            tr = ExprNode.Token.tokenize(extraTags, main.tag.posContext)
-            expr = ExprNode.LIT(fileName)
+            tr = KorteExprNode.Token.tokenize(extraTags, main.tag.posContext)
+            expr = KorteExprNode.LIT(fileName)
         } else {
             tr = main.tag.tokens
-            expr = ExprNode.parseExpr(tr)
+            expr = KorteExprNode.parseExpr(tr)
         }
 
-        val params = linkedMapOf<String, ExprNode>()
+        val params = linkedMapOf<String, KorteExprNode>()
         while (tr.hasMore) {
-            val id = ExprNode.parseId(tr)
+            val id = KorteExprNode.parseId(tr)
             tr.expect("=")
-            val expr = ExprNode.parseExpr(tr)
+            val expr = KorteExprNode.parseExpr(tr)
             params[id] = expr
         }
         tr.expectEnd()
         DefaultBlocks.BlockInclude(expr, params, main.tag.posContext, content)
     }
 
-    val templateConfig = TemplateConfig(
+    val templateConfig = KorteTemplateConfig(
         extraTags = listOf(
-            Tag("import_css", setOf(), null) {
+            KorteTag("import_css", setOf(), null) {
                 //val expr = chunks[0].tag.expr
                 val expr = chunks[0].tag.content.trimStart('"').trimEnd('"')
                 DefaultBlocks.BlockText(folders.static.child(expr)!!.readText().compressCss())
             },
-            Tag("seo", setOf(), null) {
+            KorteTag("seo", setOf(), null) {
                 DefaultBlocks.BlockText("<!-- seo -->")
             },
             Include
         ),
         extraFilters = listOf(
-            Filter("sha1") {
+            KorteFilter("sha1") {
                 subject.str.sha1().hexLower
             },
-            Filter("default") {
+            KorteFilter("default") {
                 when (subject) {
                     null, false, "" -> this.args[0]
                     else -> subject
                 }
             },
-            Filter("img_src") {
+            KorteFilter("img_src") {
                 val path = subject.toString()
                 val absPath = getAbsoluteUrl(path, context.scope)
                 absPath
             },
-            Filter("strip_html") {
+            KorteFilter("strip_html") {
                 if (subject == null) "" else Jsoup.parse(subject.toString()).text()
             },
-            Filter("truncatewords") {
+            KorteFilter("truncatewords") {
                 val count = args.getOrNull(0).dyn.toIntOrNull() ?: 10
                 val ellipsis = args.getOrNull(1).dyn.toStringOrNull() ?: "..."
                 subject.toString().splitKeep(Regex("\\W+")).take(count).joinToString("") + ellipsis
                 //subject.toString()
             },
-            Filter("slugify") {
+            KorteFilter("slugify") {
                 this.subject.toString().replace("\\W+", "-")
             },
-            Filter("img_srcset") {
+            KorteFilter("img_srcset") {
                 val path = subject.toString()
                 val absPath = getAbsoluteUrl(path, context.scope)
                 args.map { it.toDynamicInt() }.joinToString(", ") { "$absPath ${it}w" }
             },
-            Filter("absolute") { getAbsoluteUrl(subject.toString(), context.scope.get("_call") as ApplicationCall) },
-            Filter("absolute_url") {
+            KorteFilter("absolute") { getAbsoluteUrl(subject.toString(), context.scope.get("_call") as ApplicationCall) },
+            KorteFilter("absolute_url") {
                 getAbsoluteUrl(
                     subject.toString(),
                     context.scope.get("_call") as ApplicationCall
                 )
             },
-            Filter("excerpt") {
+            KorteFilter("excerpt") {
                 Jsoup.clean(subject.toString().substr(0, 200), Safelist.relaxed())
             },
-            Filter("eval_template") {
+            KorteFilter("eval_template") {
                 //fun Template.Scope.root(): Template.Scope = this?.parent?.root() ?: this
                 val subject: Any = this.subject ?: ""
                 val str = when (subject) {
-                    is RawString -> subject.str
+                    is KorteRawString -> subject.str
                     else -> subject.toString()
                 }
 
@@ -353,10 +353,10 @@ class LandingServing(
                     "--ERROR--"
                 }
             },
-            Filter("markdown_to_html") {
+            KorteFilter("markdown_to_html") {
                 subject.toString().kramdownToHtml()
             },
-            Filter("date_format") {
+            KorteFilter("date_format") {
                 val subject = this.subject
                 val date = when (subject) {
                     is Date -> subject
@@ -372,7 +372,7 @@ class LandingServing(
                     SimpleDateFormat(args[0].toDynamicString()).format(date ?: Date(0L))
                 }
             },
-            Filter("date") {
+            KorteFilter("date") {
                 val subject = this.subject
                 val date = when (subject) {
                     is Date -> subject
@@ -388,7 +388,7 @@ class LandingServing(
                     SimpleDateFormat(args[0].toDynamicString()).format(date ?: Date(0L))
                 }
             },
-            Filter("image_size") {
+            KorteFilter("image_size") {
                 try {
                     val file = getAbsoluteFile(subject.dyn.str)
                     cache.get("image_size.file.${file?.absolutePath?.toByteArray(UTF8)?.sha1()?.hex}") {
@@ -410,7 +410,7 @@ class LandingServing(
                     mapOf("width" to 0, "height" to 0)
                 }
             },
-            Filter("resized_image") {
+            KorteFilter("resized_image") {
                 try {
                     val file = getAbsoluteFile(subject.dyn.str)
                     val width = args.getOrNull(0).dyn.int
@@ -446,7 +446,7 @@ class LandingServing(
                 }
                 //""
             },
-            Filter("date_rfc3339") {
+            KorteFilter("date_rfc3339") {
                 val subject = this.subject
                 val date: DateTime = when (subject) {
                     is Date -> subject.toDateTime()
@@ -455,7 +455,7 @@ class LandingServing(
                 }
                 DateFormat.FORMAT1.format(date)
             },
-            Filter("date_to_xmlschema") {
+            KorteFilter("date_to_xmlschema") {
                 val subject = this.subject
                 val date: DateTime = when (subject) {
                     is Date -> subject.toDateTime()
@@ -464,7 +464,7 @@ class LandingServing(
                 }
                 DateFormat.FORMAT1.format(date)
             },
-            Filter("date_to_string") {
+            KorteFilter("date_to_string") {
                 val subject = this.subject
                 val date: DateTime = when (subject) {
                     is Date -> subject.toDateTime()
@@ -478,16 +478,16 @@ class LandingServing(
                         date.toString(DateFormat("dd MMM YYYY"))
                     }
                 } catch (e: Throwable) {
-                    date.toStringDefault()
+                    date.toString(DateFormat.DEFAULT_FORMAT)
                 }
             },
-            Filter("where_exp") {
+            KorteFilter("where_exp") {
                 val ctx = this.context
                 val list = this.subject.toDynamicList()
                 val args = this.args.toDynamicList()
                 val itemName = if (args.size >= 2) args[0].toDynamicString() else "it"
                 val itemExprStr = args.last().toDynamicString()
-                val itemExpr = ExprNode.parse(itemExprStr, FilePosContext(FileContext("", itemExprStr), 0))
+                val itemExpr = KorteExprNode.parse(itemExprStr, KorteFilePosContext(KorteFileContext("", itemExprStr), 0))
 
                 ctx.createScope {
                     list.filter {
@@ -496,38 +496,38 @@ class LandingServing(
                     }
                 }
             },
-            Filter("xml_escape") {
+            KorteFilter("xml_escape") {
                 this.subject.toString()
             },
-            Filter("remove") {
+            KorteFilter("remove") {
                 this.subject.toString().replace(this.args.firstOrNull()?.toString() ?: "", "")
             }
         ),
         extraFunctions = listOf(
-            TeFunction("sponsored") {
-                val price = Dynamic2.accessAny(this.scope.get("session"), "price", mapper).dyn.int
-                val post_sponsor_tier = Dynamic2.accessAny(this.scope.get("post"), "sponsor_tier", mapper).dyn.toIntOrNull()
-                val post_sponsor_tier_2 = Dynamic2.accessAny(this.scope.get("page"), "sponsor_tier", mapper).dyn.toIntOrNull()
+            KorteFunction("sponsored") {
+                val price = KorteDynamic2.accessAny(this.scope.get("session"), "price", mapper).dyn.int
+                val post_sponsor_tier = KorteDynamic2.accessAny(this.scope.get("post"), "sponsor_tier", mapper).dyn.toIntOrNull()
+                val post_sponsor_tier_2 = KorteDynamic2.accessAny(this.scope.get("page"), "sponsor_tier", mapper).dyn.toIntOrNull()
                 val sponsor_tier = post_sponsor_tier ?: post_sponsor_tier_2 ?: it.getOrNull(0).dyn.toIntOrNull() ?: 1
                 //println("session=${this.scope.get("session").dyn["price"]}")
                 //println("post_sponsor_tier=${post_sponsor_tier}")
                 //println("sponsorted: price=$price, sponsor_tier=$sponsor_tier")
                 price >= sponsor_tier
             },
-            TeFunction("error") { throw NotFoundException() },
-            TeFunction("not_found") { throw NotFoundException() },
-            TeFunction("permanent_redirect") { throw HttpRedirectException(it[0].toString(), permanent = true) },
-            TeFunction("temporal_redirect") { throw HttpRedirectException(it[0].toString(), permanent = false) },
-            TeFunction("now") {
+            KorteFunction("error") { throw NotFoundException() },
+            KorteFunction("not_found") { throw NotFoundException() },
+            KorteFunction("permanent_redirect") { throw HttpRedirectException(it[0].toString(), permanent = true) },
+            KorteFunction("temporal_redirect") { throw HttpRedirectException(it[0].toString(), permanent = false) },
+            KorteFunction("now") {
                 Date()
             },
-            TeFunction("last_update") {
+            KorteFunction("last_update") {
                 entries.entries.entries.map { it.date }.maxOrNull() ?: Date()
             },
-            TeFunction("last_post_update") {
+            KorteFunction("last_post_update") {
                 entries.entries.entriesByCategory["posts"]?.map { it.date }?.maxOrNull() ?: Date()
             },
-            TeFunction("youtube_info") {
+            KorteFunction("youtube_info") {
                 val ids = it[0].dyn.list.map {
                     (if (it.value is Map<*, *>) it["id"].str else it.str).trim()
                 }
@@ -544,7 +544,7 @@ class LandingServing(
             }
         }
     )
-    val templates = Templates(templateProvider, includesProvider, layoutsProvider, templateConfig, cache = true)
+    val templates = KorteTemplates(templateProvider, includesProvider, layoutsProvider, templateConfig, cache = true)
 
     var doReload = LockSignal()
 
@@ -660,8 +660,8 @@ private fun Bitmap.resized(width: Int, height: Int, scale: ScaleMode, anchor: An
     val bmp = this
     val out = bmp.createWithThisFormat(width, height)
     out.context2d(antialiased = true) {
-        val rect = Rectangle(0, 0, width, height).place(bmp.width.toDouble(), bmp.height.toDouble(), anchor, scale)
-        drawImage(bmp, rect.x, rect.y, rect.width, rect.height)
+        val rect = Rectangle(0, 0, width, height).place(bmp.size.toDouble(), anchor, scale)
+        drawImage(bmp, rect.position, rect.size)
     }
     return out
 }
@@ -718,14 +718,14 @@ fun parseAnyDate(dateString: String): Date? {
 
 suspend fun Template(
     template: String,
-    templates: Templates,
-    includes: NewTemplateProvider = templates.includes,
-    layouts: NewTemplateProvider = templates.layouts,
-    config: TemplateConfig = templates.config,
+    templates: KorteTemplates,
+    includes: KorteNewTemplateProvider = templates.includes,
+    layouts: KorteNewTemplateProvider = templates.layouts,
+    config: KorteTemplateConfig = templates.config,
     cache: Boolean = templates.cache,
-): Template {
-    val root = TemplateProvider(mapOf("template" to template))
-    return Templates(
+): KorteTemplate {
+    val root = KorteTemplateProvider(mapOf("template" to template))
+    return KorteTemplates(
         root = root,
         includes = includes,
         layouts = layouts,
@@ -734,11 +734,11 @@ suspend fun Template(
     ).get("template")
 }
 
-suspend fun Template.TemplateEvalContext.exec(args: Any?, mapper: ObjectMapper2 = Mapper2, parentScope: Template.Scope? = null): Template.ExecResult {
+suspend fun KorteTemplate.TemplateEvalContext.exec(args: Any?, mapper: KorteObjectMapper2 = KorteMapper2, parentScope: KorteTemplate.Scope? = null): KorteTemplate.ExecResult {
     val str = StringBuilder()
-    val scope = Template.Scope(args, mapper, parentScope)
+    val scope = KorteTemplate.Scope(args, mapper, parentScope)
     if (template.frontMatter != null) for ((k, v) in template.frontMatter!!) scope.set(k, v)
-    val context = Template.EvalContext(this, scope, template.config, mapper, write = { str.append(it) })
+    val context = KorteTemplate.EvalContext(this, scope, template.config, mapper, write = { str.append(it) })
     eval(context)
-    return Template.ExecResult(context, str.toString())
+    return KorteTemplate.ExecResult(context, str.toString())
 }
