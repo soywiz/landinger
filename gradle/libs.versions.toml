@@ -1,5 +1,5 @@
 [versions]
-kotlin = "1.9.21"
+kotlin = "2.0.0-Beta4"
 ktor = "2.3.7"
 korlibs = "3.1.0"
 kminiorm = "0.10.2"
