@@ -104,7 +104,7 @@ tasks {
         //dependsOn(publishContent)
         doLast {
             for (entry in entries) {
-                exec { commandLine("rsync", "-avz", jarFile, "${entry.baseOut}/app/") }
+                exec { commandLine("scp", jarFile, "${entry.baseOut}/app/${jarFile.name}") }
             }
         }
     }

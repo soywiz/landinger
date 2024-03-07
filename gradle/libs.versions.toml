@@ -1,7 +1,8 @@
 [versions]
 kotlin = "2.0.0-Beta4"
 ktor = "2.3.7"
-korlibs = "5.3.2"
+korlibs = "5.4.0"
+#korlibs = "999.0.0.999"
 kminiorm = "0.10.2"
 
 [libraries]
