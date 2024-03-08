@@ -1,4 +1,4 @@
-FROM adoptopenjdk:14-jre-hotspot
+FROM eclipse-temurin:21-jre-hotspot
 
 RUN apt-get update && apt-get install -y git \
     && rm -rf /var/lib/apt/lists/*
