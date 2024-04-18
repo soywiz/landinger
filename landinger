@@ -18,7 +18,7 @@ if ! test -f "$LANDINGER_JAR"; then
     echo "Can't find WGET or CURL"
   fi
 
-    SHA1=$(sha1sum "${LANDINGER_JAR}.temp" | cut -d' ' -f1)
+    SHA1=$(shasum "${LANDINGER_JAR}.temp" | cut -d' ' -f1)
     if [ "$SHA1" == "$LANDINGER_SHA1" ]; then
       cp -f "${LANDINGER_JAR}.temp" "$LANDINGER_JAR"
       echo "DONE"
