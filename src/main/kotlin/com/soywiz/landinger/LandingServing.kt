@@ -130,6 +130,9 @@ class LandingServing(
             KorteTag("seo", setOf(), null) {
                 DefaultBlocks.BlockText("<!-- seo -->")
             },
+            KorteTag("comment", setOf("endcomment"), null) {
+                DefaultBlocks.BlockText("<!-- comment -->")
+            },
             Include
         ),
         extraFilters = listOf(
