@@ -1,12 +1,21 @@
-#!/usr/bin/env bash
+#!/bin/bash
 
-SCRIPTDIR="$( cd -- "$(dirname "$0")" >/dev/null 2>&1 ; pwd -P )"
+export LANDINGER_VERSION=v0.1
+export LANDINGER_FOLDER=~/.landinger
+export LANDINGER_JAR=$LANDINGER_FOLDER/landinger-$LANDINGER_VERSION.jar
+export LANDINGER_URL=https://github.com/soywiz/landinger/releases/download/$LANDINGER_VERSION/landinger.jar
+mkdir -p "$LANDINGER_FOLDER"
 
-lsof -ti tcp:8080 | xargs kill 2> /dev/null
-
-if [ "$*" == "" ]
-then
-$SCRIPTDIR/gradlew --project-dir=$SCRIPTDIR --configuration-cache run
-else
-$SCRIPTDIR/gradlew --project-dir=$SCRIPTDIR --configuration-cache run --args="$*"
+if ! test -f "$LANDINGER_JAR"; then
+  if command -v wget > /dev/null 2>&1; then
+    #echo "WGET"
+    wget -q -O "$LANDINGER_JAR" "$LANDINGER_URL"
+  elif command -v curl > /dev/null 2>&1; then
+    #echo "CURL"
+    curl -s "$LANDINGER_URL" -o "$LANDINGER_JAR"
+  else
+    echo "Can't find WGET or CURL"
+  fi
 fi
+
+java -jar "$LANDINGER_JAR" $*

@@ -1,8 +1,8 @@
 [versions]
 kotlin = "2.0.0-RC1"
 ktor = "2.3.10"
-#korlibs = "5.5.0-alpha3"
-korlibs = "999.0.0.999"
+korlibs = "5.5.0-alpha3"
+#korlibs = "999.0.0.999"
 
 [libraries]
 directory-watcher = { module = "io.methvin:directory-watcher", version = "0.16.1" }
