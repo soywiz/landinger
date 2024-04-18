@@ -194,6 +194,9 @@ class LandingServing(
             KorteFilter("markdown_to_html") {
                 subject.toString().kramdownToHtml()
             },
+            KorteFilter("markdownify") {
+                subject.toString().kramdownToHtml()
+            },
             KorteFilter("date_format") {
                 val subject = this.subject
                 val date = when (subject) {
