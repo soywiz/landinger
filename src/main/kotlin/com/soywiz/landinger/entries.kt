@@ -117,7 +117,7 @@ data class FileWithFrontMatter(val file: File) {
     val isHtml = file.name.endsWith(".html")
     val isXml = file.name.endsWith(".xml")
     private val parts by lazy {
-        val parts = (rawFileContent + "\n").split("---\n", limit = 3)
+        val parts = (rawFileContent + "\n").split(Regex("---(\\r\\n|\\r|\\n)"), limit = 3)
         when {
             parts.size >= 3 -> listOf(parts[1], parts[2])
             else -> listOf(null, parts[0])
@@ -137,7 +137,7 @@ data class FileWithFrontMatter(val file: File) {
     fun createFullTextWithBody(body: String): String {
         val headerRaw = headerRaw
         return when {
-            headerRaw != null -> "---\n${headerRaw!!.trim()}\n---\n${body}"
+            headerRaw != null -> "---\n${headerRaw.trim()}\n---\n${body}"
             else -> body
         }
     }
