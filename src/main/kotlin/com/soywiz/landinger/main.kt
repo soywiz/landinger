@@ -60,6 +60,10 @@ suspend fun main(args: Array<String>) {
 
     cli.parse(params)
 
+    if (!File(config.contentDir).isDirectory) {
+        config.contentDir = "."
+    }
+
     when {
         showHelp -> cli.showHelp()
         generate -> generate(config)
