@@ -1,6 +1,5 @@
 package com.soywiz.landinger.modules
 
-import com.soywiz.klock.DateTime
 import korlibs.inject.AsyncInjector
 import korlibs.encoding.*
 import io.ktor.server.application.*
@@ -9,6 +8,7 @@ import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import io.ktor.server.sessions.*
+import korlibs.time.*
 
 private val ConfigService.GH_CLIENT_ID get() = getSecretOrEnvString("GH_CLIENT_ID")
 private val ConfigService.GH_CLIENT_SECRET get() = getSecretOrEnvString("GH_CLIENT_SECRET")

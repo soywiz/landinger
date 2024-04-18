@@ -80,8 +80,6 @@ suspend fun generate(config: Config) {
             for (entry in landing.entries.entries.allEntries) {
                 try {
                     //println("${entry}")
-
-
                     suspend fun genPage(entry: Entry, permalink: String = entry.permalink) {
                         val result = landing.generateEntry(permalink)
 
@@ -91,14 +89,14 @@ suspend fun generate(config: Config) {
 
                         println("- $permalink")
 
-                        val permalink2 = when (permalink) {
+                        val permalinkFinal = when (permalink) {
                             "/404" -> "/404.html"
                             else -> permalink
                         }
 
                         val path = when {
-                            permalink2.endsWith(".html") || permalink2.endsWith(".xml") -> siteRoot[permalink2]
-                            else -> siteRoot["$permalink2/index.$ext"]
+                            permalinkFinal.endsWith(".html") || permalinkFinal.endsWith(".xml") -> siteRoot[permalinkFinal]
+                            else -> siteRoot["$permalinkFinal/index.$ext"]
                         }
                         path.parent.mkdirs()
                         path.ensureParents().writeString(result.finalText)
@@ -107,7 +105,8 @@ suspend fun generate(config: Config) {
                     val tplParams = landing.generateTplParams(entry.permalink)
 
                     if (entry.permalink.contains("{n}") && !entry.pagination_list.isNullOrBlank() && entry.pagination_size != null) {
-                        val res = KorteExprNode.parse(entry.pagination_list).eval(KorteTemplate.EvalContext(KorteTemplate.TemplateEvalContext(KorteTemplate("", landing.templateConfig)), tplParams.tplScope, landing.templateConfig, KorteMapper2) { println(it) })
+                        val res = KorteExprNode.parse(entry.pagination_list)
+                            .eval(KorteTemplate.EvalContext(KorteTemplate.TemplateEvalContext(KorteTemplate("", landing.templateConfig)), tplParams.tplScope, landing.templateConfig, KorteMapper2) { println(it) })
                         val list = res.list
                         val npages = list.size divCeil entry.pagination_size
                         //println("    --> $npages")

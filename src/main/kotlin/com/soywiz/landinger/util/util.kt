@@ -6,14 +6,20 @@ import io.ktor.server.plugins.*
 import java.io.File
 import java.io.IOException
 
-fun String.absoluteUrl(call: ApplicationCall): String = getAbsoluteUrl(this, call)
+fun String.absoluteUrl(call: ApplicationCall): String = getAbsoluteUrl(this, null, call)
 
-fun getAbsoluteUrl(uri: String, call: ApplicationCall?): String =
-    when {
+fun getAbsoluteUrl(uri: String, host: String?, call: ApplicationCall?): String {
+    val schemePlusHost = when {
+        call != null -> call.request.origin.schemePlusHost
+        host != null -> if (host.contains("://")) host else "http://$host"
+        else -> null
+    }
+    return when {
         uri.startsWith("http://") || uri.startsWith("https://") -> uri
-        call != null -> "${call.request.origin.schemePlusHost.trimEnd('/')}/${uri.trimStart('/')}".trimEnd('/')
+        schemePlusHost != null -> "${schemePlusHost.trimEnd('/')}/${uri.trimStart('/')}".trimEnd('/')
         else -> "/${uri.trimStart('/')}"
     }
+}
 
 fun File.takeIfExists(): File? = takeIf { it.exists() }
 

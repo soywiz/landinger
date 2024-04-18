@@ -1,7 +1,6 @@
 package com.soywiz.landinger.modules
 
 import com.fasterxml.jackson.annotation.JsonIgnore
-import com.soywiz.klock.*
 import korlibs.inject.Singleton
 import korlibs.io.lang.UTF8
 import korlibs.io.lang.toByteArray
@@ -10,8 +9,11 @@ import korlibs.io.serialization.json.Json
 import korlibs.crypto.sha1
 import io.ktor.client.*
 import io.ktor.client.engine.okhttp.*
+import korlibs.time.*
 import java.net.URL
 import java.util.Date
+import kotlin.time.*
+import kotlin.time.Duration.Companion.milliseconds
 
 private val youtubeClient = HttpClient(OkHttp)
 
@@ -34,7 +36,7 @@ data class YoutubeInfo(
 class YoutubeService(private val cache: Cache, private val config: ConfigService) {
 
     // "PT42M6S"
-    fun parseDuration(duration: String): TimeSpan {
+    fun parseDuration(duration: String): Duration {
         val regex = Regex("PT(?:(\\d+)H)?(?:(\\d+)M)?(?:(\\d+)S)?")
         val result = regex.matchEntire(duration) ?: error("Invalid duration format")
         val hours = result.groupValues[1].toIntOrNull()

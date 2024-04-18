@@ -1,8 +1,5 @@
 package com.soywiz.landinger
 
-import com.soywiz.klock.*
-import com.soywiz.klock.DateFormat
-import com.soywiz.klock.jvm.*
 import com.soywiz.landinger.korim.*
 import com.soywiz.landinger.modules.*
 import com.soywiz.landinger.modules.Dynamic.str
@@ -25,6 +22,9 @@ import korlibs.math.geom.*
 import korlibs.template.*
 import korlibs.template.dynamic.*
 import korlibs.template.util.*
+import korlibs.time.*
+import korlibs.time.DateFormat
+import korlibs.time.jvm.*
 import kotlinx.coroutines.*
 import org.jsoup.*
 import org.jsoup.safety.*
@@ -114,8 +114,10 @@ class LandingServing(
     }
 
     fun getAbsoluteUrl(url: String, scope: KorteTemplate.Scope): String {
-        return runBlocking { getAbsoluteUrl(url, scope.get("_call") as? ApplicationCall?) }
+        //return runBlocking { getAbsoluteUrl(url, scope.get("_request")?.dyn?.get("host")?.str, scope.get("_call") as? ApplicationCall?) }
+        return runBlocking { getAbsoluteUrl(url, scope.get("_request")?.dyn?.get("host")?.str, scope.get("_call") as? ApplicationCall?) }
     }
+
     val absoluteUrl = KorteFilter("absolute") { getAbsoluteUrl(subject.toString(), context.scope) }
 
     val templateConfig = KorteTemplateConfig(
@@ -444,7 +446,7 @@ class LandingServing(
 
     fun generateTplParams(
         permalink: String,
-        host: String = "127.0.0.1",
+        host: String? = this.configService.startConfig.host,
         call: ApplicationCall? = null,
         code: HttpStatusCode = HttpStatusCode.OK
     ): TplParamsResult {
@@ -465,19 +467,21 @@ class LandingServing(
             pageShownBus.pageShown(page)
         }
 
-        val tplParams: Map<String, Any?> = configService.config + mapOf(
+        val baseConf = mapOf(
             "_request" to mapOf("host" to host),
+            "_call" to call,
             "site" to buildSiteObject(),
             "params" to params,
             "page" to entry,
-        ) + configService.extraConfig + page.extraConfig
+        )
+        val tplParams: Map<String, Any?> = configService.config + baseConf + configService.extraConfig + page.extraConfig
 
         return TplParamsResult(tplParams, page, entry, permalink, code)
     }
 
     suspend fun generateEntry(
         permalink: String,
-        host: String = "127.0.0.1",
+        host: String? = this.configService.startConfig.host,
         call: ApplicationCall? = null,
         code: HttpStatusCode = HttpStatusCode.OK
     ): EntryResult {

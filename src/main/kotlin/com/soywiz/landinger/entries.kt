@@ -1,14 +1,15 @@
 package com.soywiz.landinger
 
-import com.soywiz.klock.*
 import korlibs.inject.*
 import korlibs.io.dynamic.*
 import korlibs.template.dynamic.*
 import com.soywiz.landinger.util.*
 import io.ktor.http.*
 import io.ktor.server.application.*
+import korlibs.time.*
 import java.io.*
 
+@Singleton
 class IndexService(val folders: Folders) {
     fun index(folder: File, category: String): EntriesStore = index(listOf(folder), category)
     fun index(folder: List<File>, category: String): EntriesStore {

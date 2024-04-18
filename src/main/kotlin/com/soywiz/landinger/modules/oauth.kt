@@ -1,7 +1,6 @@
 package com.soywiz.landinger.modules
 
 import com.fasterxml.jackson.module.kotlin.*
-import com.soywiz.klock.*
 import korlibs.io.lang.*
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.okhttp.OkHttp
@@ -10,6 +9,7 @@ import io.ktor.client.request.forms.*
 import io.ktor.client.statement.*
 import io.ktor.http.*
 import io.ktor.http.content.*
+import korlibs.time.*
 import java.net.*
 
 private val oauthHttpClient = HttpClient(OkHttp)

@@ -1,58 +1,68 @@
 package com.soywiz.landinger.modules
 
-import korlibs.time.DateTime
-import korlibs.time.TimeSpan
-import korlibs.time.days
-import com.soywiz.kminiorm.*
-import com.soywiz.kminiorm.dialect.SqliteDialect
-import korlibs.inject.Singleton
-import com.soywiz.landinger.Folders
-import java.io.File
-import kotlin.reflect.KClass
+import com.soywiz.landinger.*
+import com.soywiz.landinger.util.*
+import io.ktor.util.*
+import korlibs.crypto.*
+import korlibs.inject.*
+import korlibs.io.lang.*
+import korlibs.time.*
+import kotlinx.coroutines.*
+import java.io.*
+import java.io.Closeable
+import kotlin.reflect.*
+import kotlin.time.*
 
 @Singleton
-class Cache(val folders: Folders) {
-    suspend inline fun <reified T : Any> get(key: String, ttl: TimeSpan = 365.days, noinline gen: suspend () -> T): T = get(key, T::class, ttl, gen)
+class Cache(val folders: Folders) : Closeable {
+    suspend inline fun <reified T : Any> get(key: String, ttl: Duration = 365.days, gen: () -> T): T = get(key, T::class, ttl, gen)
     suspend inline fun <reified T : Any> getOrNull(key: String): T? = getOrNull(key, T::class)
 
-    data class Entry(
-        @DbPrimary val key: String,
-        val content: String,
-        val validUntil: Long
-    ) : DbBaseModel
+    private val entriesDir = File(folders.cache, "__entries")
 
-    private val sqliteFile = File(folders.cache, "cache.sq3")
-    private val dbString = "jdbc:sqlite:${sqliteFile.absoluteFile.toURI()}"
-    private val db = try {
-        JdbcDb(
-            dbString,
-            debugSQL = System.getenv("DEBUG_SQL") == "true",
-            dialect = SqliteDialect,
-            async = true
-        )
-    } catch (e: Throwable) {
-        //System.err.println("Error opening")
-        throw RuntimeException("Error opening DB dbString='$dbString'", e)
-    }
-    private val entries = try {
-        db.tableBlocking<Entry>()
-    } catch (e: Throwable) {
-        //System.err.println("Error opening")
-        throw RuntimeException("Error opening DB dbString='$dbString'", e)
+    //private val db = DBMaker
+    //    .fileDB(File(folders.cache, "cache.db"))
+    //    //.checksumHeaderBypass()
+    //    .transactionEnable()
+    //    .make()
+    //private var cache = db
+    //    .hashMap("cache")
+    //    .create() as HTreeMap<String, String>
+
+    private fun keyFile(key: String): File {
+        val hash = SHA256.digest(key.decodeBase64Bytes()).hexLower
+        return File(entriesDir, "${hash.substr(0, 2)}/$hash.bin")
     }
 
-    suspend fun has(key: String): Boolean = entries.findOne { it::key eq key AND (it::validUntil ge System.currentTimeMillis()) } != null
+    private suspend fun putRaw(key: String, value: String) {
+        withContext(Dispatchers.IO) {
+            keyFile(key).also { it.parentFile.mkdirs() }.writeText(value)
+        }
+    }
 
-    suspend fun put(key: String, value: Any?, ttl: TimeSpan = 365.days) {
-        entries.insert(Entry(key, jsonMapper.writeValueAsString(value), (DateTime.now() + ttl).unixMillisLong), onConflict = DbOnConflict.REPLACE)
+    private suspend fun getRaw(key: String): String? {
+        return withContext(Dispatchers.IO) {
+            keyFile(key).takeIfExists()?.readText()
+        }
+    }
+
+    suspend fun has(key: String): Boolean = getRaw(key) != null
+
+    suspend fun put(key: String, value: Any?, ttl: Duration = 365.days) {
+        putRaw(key, jsonMapper.writeValueAsString(value))
     }
 
     suspend fun <T : Any> getOrNull(key: String, clazz: KClass<T>): T? =
-        entries.findOne { it::key eq key }?.let { jsonMapper.readValue(it.content, clazz.java) }
+        getRaw(key)?.let { jsonMapper.readValue(it, clazz.java) }
+        //entries.findOne { it::key eq key }?.let { jsonMapper.readValue(it.content, clazz.java) }
 
-    suspend fun <T : Any> get(key: String, clazz: KClass<T>, ttl: TimeSpan = 365.days, gen: suspend () -> T): T {
+    suspend inline fun <T : Any> get(key: String, clazz: KClass<T>, ttl: Duration = 365.days, gen: () -> T): T {
         if (!has(key)) put(key, gen(), ttl)
         return getOrNull(key, clazz)!!
+    }
+
+    override fun close() {
+        //db.close()
     }
 
     /*

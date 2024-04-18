@@ -1,5 +1,6 @@
 package com.soywiz.landinger.modules
 
+/*
 import com.soywiz.klock.measureTime
 import com.soywiz.landinger.Entries
 import org.apache.lucene.analysis.standard.*
@@ -62,3 +63,4 @@ class MyLuceneIndex(val entries: Entries) {
         }
     }
 }
+*/

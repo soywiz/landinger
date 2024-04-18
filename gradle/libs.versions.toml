@@ -1,15 +1,21 @@
 [versions]
 kotlin = "2.0.0-RC1"
 ktor = "2.3.10"
-korlibs = "5.5.0-alpha3"
-#korlibs = "999.0.0.999"
-kminiorm = "0.10.2"
+#korlibs = "5.5.0-alpha3"
+korlibs = "999.0.0.999"
 
 [libraries]
 directory-watcher = { module = "io.methvin:directory-watcher", version = "0.16.1" }
 lucene-core = { module = "org.apache.lucene:lucene-core", version = "9.3.0" }
 lucene-queryparser = { module = "org.apache.lucene:lucene-queryparser", version = "9.3.0" }
 flexmark-all = { module = "com.vladsch.flexmark:flexmark-all", version = "0.64.8" }
+flexmark-core = { module = "com.vladsch.flexmark:flexmark", version = "0.64.8" }
+#mapdb = { module = "org.mapdb:mapdb", version = "3.1.0" }
+flexmark-html = { module = "com.vladsch.flexmark:flexmark-html2md-converter", version = "0.64.8" }
+flexmark-abbreviation = { module = "com.vladsch.flexmark:flexmark-ext-abbreviation", version = "0.64.8" }
+flexmark-definition = { module = "com.vladsch.flexmark:flexmark-ext-definition", version = "0.64.8" }
+flexmark-footnotes = { module = "com.vladsch.flexmark:flexmark-ext-footnotes", version = "0.64.8" }
+flexmark-typographic = { module = "com.vladsch.flexmark:flexmark-ext-typographic", version = "0.64.8" }
 snakeyaml = { module = "org.yaml:snakeyaml", version = "2.0" }
 freemarker = { module = "org.freemarker:freemarker", version = "2.3.31" }
 slack-client = { module = "com.hubspot.slack:slack-client", version = "1.12" }
@@ -24,12 +30,10 @@ ktor-client-okhttp = { module = "io.ktor:ktor-client-okhttp", version.ref = "kto
 ktor-client-jackson = { module = "io.ktor:ktor-client-jackson", version.ref = "ktor" }
 kotlinx-coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version = "1.8.1-Beta" }
 korlibs-io = { module = "com.soywiz:korlibs-io-jvm", version.ref = "korlibs" }
+korlibs-time = { module = "com.soywiz:korlibs-time-jvm", version.ref = "korlibs" }
 korlibs-image = { module = "com.soywiz:korlibs-image-jvm", version.ref = "korlibs" }
 korlibs-inject = { module = "com.soywiz:korlibs-inject-jvm", version.ref = "korlibs" }
 korlibs-template = { module = "com.soywiz:korlibs-template-jvm", version.ref = "korlibs" }
-kminiorm = { module = "com.soywiz.korlibs.kminiorm:kminiorm-jvm", version.ref = "kminiorm" }
-kminiorm-jdbc = { module = "com.soywiz.korlibs.kminiorm:kminiorm-jdbc-jvm", version.ref = "kminiorm" }
-sqlite-jdbc = { module = "org.xerial:sqlite-jdbc", version = "3.44.1.0" }
 jackson-module-kotlin = { module = "com.fasterxml.jackson.module:jackson-module-kotlin", version = "2.13.4" }
 logback-classic = { module = "ch.qos.logback:logback-classic", version = "1.4.14" }
 yuicompressor = { module = "com.yahoo.platform.yui:yuicompressor", version = "2.4.8" }

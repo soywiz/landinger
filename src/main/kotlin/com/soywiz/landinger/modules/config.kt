@@ -8,7 +8,7 @@ import korlibs.datastructure.*
 
 data class Config(
     var port: Int = System.getenv("VIRTUAL_PORT")?.toIntOrNull() ?: 8080,
-    var host: String = "127.0.0.1",
+    var host: String? = null,
     var contentDir: String = "content",
     var debug: Boolean = false,
 )
