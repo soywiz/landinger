@@ -103,7 +103,7 @@ tasks {
     val proguard by creating(ProGuardTask::class) {
         //configuration file('proguard.pro')
         injars(project.tasks.named("fatJar", Jar::class).flatMap { it.archiveFile })
-        outjars(File(buildDir, "/libs/${project.name}.jar"))
+        outjars(File(projectDir, "build/libs/${project.name}.jar"))
         val javaHome = System.getProperty("java.home")
         libraryjars("$javaHome/lib/rt.jar")
         // Support newer java versions that doesn't have rt.jar
@@ -145,13 +145,12 @@ tasks {
         keep("enum org.jsoup.nodes.** { *; }")
 
 
-        //keep("class * implements com.sun.jna.** { *; }")
-        //keep("class com.sun.jna.** { *; }")
+        keepnames("class * extends com.sun.jna.** { *; }")
+        keep("class * implements com.sun.jna.** { *; }")
+        keep("class com.sun.jna.** { *; }")
         //keep("class !com.sun.jna.platform.win32.** { *; }")
         //keep("class !com.sun.jna.platform.wince.** { *; }")
 
-        //keepnames("class com.sun.jna.** { *; }")
-        //keepnames("class * extends com.sun.jna.** { *; }")
         //keepnames("class * implements com.sun.jna.Library { *; }")
         keepnames("class * extends korlibs.ffi.FFILib { *; }")
         keepnames("class * extends korlibs.korge.scene.Scene { *; }")
