@@ -44,7 +44,7 @@ class CliParser(val title: String = "CLI") {
         while (r.hasMore) {
             val item = r.read()
             val entry = entriesByName[item]
-            val args = if (entry != null) (0 until entry.nargs).map { r.read() } else listOf()
+            val args = if (entry != null) (0 until entry.nargs).mapNotNull { if (r.hasMore) r.read() else null } else listOf()
             if (entry != null) {
                 entry.block(args.getOrElse(0) { "" })
             } else {

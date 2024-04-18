@@ -84,7 +84,7 @@ suspend fun Application.installLogin(injector: AsyncInjector) {
         }
         pageShownBus.pageShown { it ->
             val userSession = try {
-                it.call.sessions.get<UserSession>()
+                it.call?.sessions?.get<UserSession>()
             } catch (e: IllegalStateException) {
                 null
             }
@@ -105,7 +105,7 @@ suspend fun Application.installLogin(injector: AsyncInjector) {
             )
             it.extraConfig["debug"] = config.startConfig.debug
             //println("pageShown: $logged : $login")
-            it.call.sessions.set(LastVisitedPageSession(it.call.request.uri))
+            it.call?.sessions?.set(LastVisitedPageSession(it.call.request.uri))
         }
     }
 }

@@ -9,10 +9,10 @@ import java.io.IOException
 fun String.absoluteUrl(call: ApplicationCall): String = getAbsoluteUrl(this, call)
 
 fun getAbsoluteUrl(uri: String, call: ApplicationCall?): String =
-    if (uri.startsWith("http://") || uri.startsWith("https://")) {
-        uri
-    } else {
-        "${(call?.request?.origin?.schemePlusHost ?: "https://localhost").trimEnd('/')}/${uri.trimStart('/')}".trimEnd('/')
+    when {
+        uri.startsWith("http://") || uri.startsWith("https://") -> uri
+        call != null -> "${call.request.origin.schemePlusHost.trimEnd('/')}/${uri.trimStart('/')}".trimEnd('/')
+        else -> "/${uri.trimStart('/')}"
     }
 
 fun File.takeIfExists(): File? = takeIf { it.exists() }

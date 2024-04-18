@@ -126,7 +126,7 @@ data class FileWithFrontMatter(val file: File) {
     val headerRaw by lazy { parts[0] }
     val bodyRaw by lazy { parts[1] ?: "" }
     val bodyHtml by lazy { bodyRaw.toHtml() }
-    val fileContentHtml by lazy { createFullTextWithBody(bodyHtml)}
+    val fileContentHtml: String by lazy { createFullTextWithBody(bodyHtml)}
     val header: Map<String, Any?> by lazy { if (headerRaw != null) yaml.load<Map<String, Any?>>(headerRaw) else mapOf<String, Any?>() }
 
     private fun String.toHtml() = if (isMarkDown) kramdownToHtml() else this

@@ -22,6 +22,7 @@ ktor-server-sessions = { module = "io.ktor:ktor-server-sessions", version.ref = 
 ktor-client-core-jvm = { module = "io.ktor:ktor-client-core-jvm", version.ref = "ktor" }
 ktor-client-okhttp = { module = "io.ktor:ktor-client-okhttp", version.ref = "ktor" }
 ktor-client-jackson = { module = "io.ktor:ktor-client-jackson", version.ref = "ktor" }
+kotlinx-coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version = "1.8.1-Beta" }
 korlibs-io = { module = "com.soywiz:korlibs-io-jvm", version.ref = "korlibs" }
 korlibs-image = { module = "com.soywiz:korlibs-image-jvm", version.ref = "korlibs" }
 korlibs-inject = { module = "com.soywiz:korlibs-inject-jvm", version.ref = "korlibs" }

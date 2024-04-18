@@ -1,4 +1,6 @@
 import org.gradle.kotlin.dsl.*
+import org.jetbrains.kotlin.gradle.dsl.*
+import org.jetbrains.kotlin.gradle.internal.Kapt3GradleSubplugin.Companion.isIncludeCompileClasspath
 
 plugins {
     kotlin("jvm") version libs.versions.kotlin.get()
@@ -43,6 +45,7 @@ dependencies {
     testImplementation(libs.junit)
     testImplementation("org.jetbrains.kotlin:kotlin-test")
     testImplementation("org.jetbrains.kotlin:kotlin-test-junit")
+    testImplementation(libs.kotlinx.coroutines.test)
 }
 
 val baseMainClassName = "com.soywiz.landinger.MainKt"
@@ -54,6 +57,13 @@ application {
 }
 
 tasks {
+    val generate by creating(JavaExec::class) {
+        group = "application"
+        mainClass = baseMainClassName
+        classpath = sourceSets["main"].runtimeClasspath
+        args("-g")
+    }
+
     val fatJar by creating(Jar::class) {
         manifest {
             attributes(mapOf("Main-Class" to baseMainClassName))
@@ -67,7 +77,7 @@ tasks {
 
     //val run by creating(JavaExec::class) {}
 
-    val jarFile = fatJar.outputs.files.first()
+    //val jarFile = fatJar.outputs.files.first()
 
     val publish by creating {
         dependsOn(fatJar)
@@ -79,8 +89,9 @@ java {
     targetCompatibility = JavaVersion.VERSION_1_8
 }
 
-tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile> {
-    kotlinOptions {
-        jvmTarget = "1.8" // Specify the JVM version here
+kotlin {
+    compilerOptions {
+        this.suppressWarnings.set(true)
+        this.jvmTarget.set(JvmTarget.JVM_1_8)
     }
 }
