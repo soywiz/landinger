@@ -75,10 +75,12 @@ suspend fun generate(config: Config) {
         val injector = createInjector(config)
         val landing = injector.get<LandingServing>()
         landing.enableReloading = false
+
         val timeGeneratedPages = measureTime {
             for (entry in landing.entries.entries.allEntries) {
                 try {
                     //println("${entry}")
+
 
                     suspend fun genPage(entry: Entry, permalink: String = entry.permalink) {
                         val result = landing.generateEntry(permalink)
@@ -89,9 +91,14 @@ suspend fun generate(config: Config) {
 
                         println("- $permalink")
 
+                        val permalink2 = when (permalink) {
+                            "/404" -> "/404.html"
+                            else -> permalink
+                        }
+
                         val path = when {
-                            permalink.endsWith(".html") || permalink.endsWith(".xml") -> siteRoot[permalink]
-                            else -> siteRoot["$permalink/index.$ext"]
+                            permalink2.endsWith(".html") || permalink2.endsWith(".xml") -> siteRoot[permalink2]
+                            else -> siteRoot["$permalink2/index.$ext"]
                         }
                         path.parent.mkdirs()
                         path.ensureParents().writeString(result.finalText)
@@ -110,8 +117,6 @@ suspend fun generate(config: Config) {
                     } else {
                         genPage(entry)
                     }
-
-
                 } catch (e: Throwable) {
                     e.printStackTrace()
                 }
@@ -123,7 +128,10 @@ suspend fun generate(config: Config) {
         }
         println("Time copying static files $timeCopyStatic")
         val timeCopyResizes = measureTime {
-            File(landing.folders.cache, "__resizes").copyRecursively(File(siteRootFile, "__resizes"), overwrite = true)
+            val resizes = File(landing.folders.cache, "__resizes")
+            if (resizes.isDirectory) {
+                resizes.copyRecursively(File(siteRootFile, "__resizes"), overwrite = true)
+            }
         }
         println("Time copying resized files $timeCopyResizes")
     }
@@ -214,7 +222,8 @@ fun List<File>.takeIfExists(): File? {
 fun FileWithFrontMatter.toTemplateContent(): KorteTemplateContent {
     //println("rawFileContent: $rawFileContent")
     return KorteTemplateContent(
-        rawFileContent, when {
+        rawFileContent,
+        when {
             isMarkDown -> "markdown"
             isXml -> "xml"
             else -> null

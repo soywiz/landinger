@@ -137,7 +137,7 @@ data class FileWithFrontMatter(val file: File) {
     fun createFullTextWithBody(body: String): String {
         val headerRaw = headerRaw
         return when {
-            headerRaw != null -> "---\n${headerRaw.trim()}\n---\n${body}"
+            headerRaw != null -> "---\n${headerRaw.trim().replace("\r\n", "\n")}\n---\n${body}"
             else -> body
         }
     }

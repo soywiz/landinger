@@ -46,6 +46,7 @@ class LandingServing(
     val templateProvider = object : KorteNewTemplateProvider {
         override suspend fun newGet(template: String): KorteTemplateContent? {
             val entry = entries.entries[template] ?: return null
+            //println("template.newGet=$template")
             return entry.mfile.toTemplateContent()
         }
     }
@@ -59,7 +60,9 @@ class LandingServing(
                 for (path in paths) {
                     val file = path.child(filePath)
                     if (file != null && file.exists() && !file.isDirectory) {
-                        return FileWithFrontMatter(file).toTemplateContent()
+                        val fileWithFrontMatter = FileWithFrontMatter(file)
+                        //println(fileWithFrontMatter.bodyRaw)
+                        return fileWithFrontMatter.toTemplateContent()
                     }
                 }
             }
@@ -486,6 +489,9 @@ class LandingServing(
     ): EntryResult {
         //println("configService.extraConfig: ${configService.extraConfig} : $configService")
         val text = templates.render(result.permalink, result.tplParams)
+
+        //println("permalink=${result.permalink} : text=$text")
+
         val finalText = text.forSponsor(result.page.isSponsor)
 
         return EntryResult(

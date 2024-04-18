@@ -69,7 +69,7 @@ $SPONSOR$:Sponsored content [1]:$$
 
 Lorem ipsum dolor sit amet, consectetur adipiscing elit. Duis consectetur dictum magna, eu porta nisi faucibus eu. Suspendisse sit amet eleifend nisi. Integer congue urna vitae odio hendrerit, sit amet cursus elit sollicitudin. Nam condimentum diam et finibus elementum. Duis justo tellus, luctus quis nulla nec, accumsan convallis enim. Nam dapibus ullamcorper nisi, sed cursus arcu malesuada et. Sed mi dui, porta at pharetra vel, porta nec ex. Aliquam eget ipsum odio. Aliquam ac faucibus purus. Morbi vel commodo lacus, at pulvinar nunc. Donec mollis ante et porta ultrices. Donec tempor libero et dui ornare faucibus. Mauris a sagittis turpis. Pellentesque habitant morbi tristique senectus et netus et malesuada fames ac turpis egestas. Nam vehicula gravida velit, non sollicitudin odio laoreet viverra. Nunc sapien tortor, pulvinar in auctor a, bibendum et augue.
 
-{% include "articles.html" articles=articles %}
+{% include "articles" articles=articles %}
 
 ## Section1
 
